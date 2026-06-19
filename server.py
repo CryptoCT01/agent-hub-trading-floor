@@ -79,15 +79,16 @@ VERIFIED_TOKENS = {
     "OP":   "0x4197C6EF3879a08cC51B5563c1Ff27bB4Bc3E03D",
     "SUI":  "0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cB5",
     "APT":  "0xb8Af6F0c5dAb04A0C0A2a5bf2e2c5Bc705293C55",
-    # Liquid staking tokens
-    "ankrBNB":"0x52F24a5e03aee338Da5fd9Df68D2b6FAe1178827",
-    "stkBNB":"0xc2E9d07F66A89c44062459A47a0D2Dc038E4fb16",
-    "BNBx": "0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275",
-    "slisBNB":"0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B",
-    "wBETH": "0xa2E3356610840701BDf5611a53974510Ae27E2e1",
-    "wstETH":"0x26c5e01524d2E6280A48F2c50fF6De7e52E9611C",
-    "ezETH": "0x2416092f143378750bb29b79eD961ab195CcEea5",
-    "weETH": "0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
+    # Liquid staking tokens (removed — no trading profit potential)
+    # Replaced with high-volatility, real trading tokens:
+    "YFI":  "0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e",  # Yearn Finance — iconic DeFi
+    "FTM":  "0xAD29AbB318791D579433D831ed122aFeAf29dcfe",  # Fantom — L1 with active trading
+    "CHR":  "0xf9CeC8d50f6c8ad3Fb6dcCEC577e05aA32B224FE",  # Chromia — relational blockchain
+    "BNX":  "0x5b1f874d0b0C5ee17a495CbB70AB8bf64107A3BD",  # BinaryX — BSC gaming
+    "TLM":  "0x2222227E22102Fe3322098e4CBfE18cFebD57c95",  # Alien Worlds — gaming
+    "RACA": "0x12BB890508c125661E03b09EC06E404bc9289040",  # Radio Caca — gaming ecosystem
+    "ELON": "0x7bd6FaBD64813c48545C9c0e312A0099d9be2540",  # Dogelon Mars — meme volume
+    "BAKE": "0xE02dF9e3e622DeBdD69fb838bB799E3F168902c5",  # BakeryToken — BSC DEX
     # Cross-chain lending
     "RDNT": "0xf7DE7E8A6bd59ED41a4b5fe50278b3B7f31384dF",
 }
