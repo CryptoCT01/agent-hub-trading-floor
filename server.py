@@ -9,7 +9,7 @@ ssl_ctx.verify_mode = ssl.CERT_NONE
 
 # ===== VERIFIED TOKEN ADDRESSES (BSC Mainnet) =====
 # Source: PancakeSwap Extended Token List + CMC + BscScan verified contracts
-# All 64 tokens have active PancakeSwap liquidity
+# All 69 tokens have active PancakeSwap liquidity
 VERIFIED_TOKENS = {
     "BUSD": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
     "USDT": "0x55d398326f99059fF775485246999027B3197955",
@@ -88,6 +88,8 @@ VERIFIED_TOKENS = {
     "wstETH":"0x26c5e01524d2E6280A48F2c50fF6De7e52E9611C",
     "ezETH": "0x2416092f143378750bb29b79eD961ab195CcEea5",
     "weETH": "0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
+    # Cross-chain lending
+    "RDNT": "0xf7DE7E8A6bd59ED41a4b5fe50278b3B7f31384dF",
 }
 # TWAK-native tokens (can use symbol names directly)
 TWAK_NATIVE = ["BUSD", "USDT", "USDC", "DAI", "ETH"]
