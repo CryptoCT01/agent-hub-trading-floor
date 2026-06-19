@@ -285,14 +285,8 @@ def refresh_cache():
             pass
         time.sleep(CACHE_TTL)
 
-TRADE_HISTORY = [
-  {"time":"17 Jun 14:30","pair":"BNB→BUSD","dir":"SELL","amt":"0.001 BNB → 0.5965 BUSD","tx":"0x4d9a72cb25e1ebe808bf496c74961feb06b620ad345769531b85b826b110fc34"},
-  {"time":"18 Jun 09:50","pair":"BNB→BUSD","dir":"SELL","amt":"0.001 BNB → 0.2857 BUSD","tx":"0x26dfe7b6f43a5536e7a0c01c465d6361424a6b287ccde8977a6b6cad0d02c31b"},
-  {"time":"18 Jun 18:22","pair":"BNB→BUSD","dir":"SELL","amt":"0.001 BNB → 0.2857 BUSD","tx":"0x6c9a15ac0bf22e05a85b9bada1e8d6d56502b0e4e23ef2272b1dbeae075b7e9b"},
-  {"time":"19 Jun 06:04","pair":"BNB→BUSD","dir":"SELL","amt":"0.001 BNB → 0.5705 BUSD","tx":"0x5e9fdc3543e34c388f10218e8e8815d97812f2564ab6acf867eaa809cbc9fd33"},
-  {"time":"19 Jun 06:09","pair":"BNB→BUSD","dir":"SELL","amt":"0.001 BNB → 0.5705 BUSD","tx":"0xbf6596b23226ce36173f43fe030ed7bd709e4eb2a61cd744b2e3bcabca6c554e"},
-]
-TRADE_COUNT = len(TRADE_HISTORY)  # tracks live swaps from history
+TRADE_HISTORY = []
+TRADE_COUNT = 0  # fresh start for v2 strategy
 
 def refresh_wallet():
     while True:
@@ -624,6 +618,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             amt = qp.get("amount",["1"])[0]
             self.path = "/api/manual/swap?from=BUSD&to="+to_t+"&amount="+amt
             self.do_GET()
+        elif p.startswith("/api/manual/withdraw"):
+            """Withdraw tokens to an external address."""
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                to_addr = qp.get("to",[""])[0]
+                amount = qp.get("amount",["0"])[0]
+                token = qp.get("token",["BUSD"])[0].upper()
+                if not to_addr or not amount:
+                    self.send_json({"executed":False,"reason":"Missing to address or amount"}); return
+                if token == "BNB":
+                    result = twak_jsonrpc("transfer",{"to":to_addr,"amount":amount,"chain":"bsc"})
+                else:
+                    if token not in VERIFIED_TOKENS:
+                        self.send_json({"executed":False,"reason":token+" not supported"}); return
+                    addr = VERIFIED_TOKENS[token] if token != "BNB" else "BNB"
+                    result = twak_jsonrpc("transfer_token",{"to":to_addr,"amount":amount,"tokenAddress":addr,"chain":"bsc"})
+                text = twak_swap_text(result)
+                sd = json.loads(text) if isinstance(text, str) else text
+                tx_hash = sd.get("hash","") or sd.get("txid","")
+                if tx_hash:
+                    self.send_json({"executed":True,"tx":tx_hash,"explorer":"https://bscscan.com/tx/"+tx_hash})
+                else:
+                    self.send_json({"executed":False,"reason":sd.get("message","Transfer failed")})
+            except Exception as e:
+                self.send_json({"executed":False,"error":str(e)})
         elif p == "/api/status":
             self.send_json({"online": True, "cached_endpoints": list(cache.keys()) if cache else ["waiting..."]})
         elif p == "/api/chart/btc":

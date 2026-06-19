@@ -22,6 +22,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .stat-l{font-size:0.55rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.stat-v{font-size:0.8rem;font-weight:600}
 .signal-meter{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:0.55rem;cursor:pointer;transition:.2s}
 .signal-meter:hover{border-color:var(--gold)}
+.wm-btn{background:rgba(0,212,230,0.1);border:1px solid rgba(0,212,230,0.3);color:var(--cyan);padding:4px 12px;border-radius:999px;font-family:var(--mono);font-size:0.5rem;cursor:pointer;transition:.2s}
+.wm-btn:hover{background:rgba(0,212,230,0.2)}
 .signal-label{color:var(--fg3);font-weight:500;letter-spacing:.05em;margin-right:2px}.signal-dots{display:flex;gap:3px}
 .signal-dot{width:8px;height:8px;border-radius:50%;transition:all .3s}
 .signal-dot.on{background:var(--green);box-shadow:0 0 6px rgba(0,230,118,0.4)}
@@ -427,7 +429,7 @@ var e=document.getElementById("tradeUsd");if(e)document.getElementById("_3").tex
 // Wallet
 function w(){var p=document.getElementById("wm");
 if(!p){p=document.createElement("div");p.id="wm";p.className="wallet-modal";
-p.innerHTML="<div class=\"wm-header\"><div class=\"wm-total\" id=\"_t\">$0</div><div class=\"wm-label\">TOTAL</div></div><div id=\"_l\"></div>";
+p.innerHTML="<div class=\"wm-header\"><div class=\"wm-total\" id=\"_t\">$0</div><div class=\"wm-label\">TOTAL</div><div style=\"display:flex;gap:6px;justify-content:center;margin-top:10px\"><button class=\"wm-btn\" onclick=\"showDeposit()\">📥 DEPOSIT</button><button class=\"wm-btn\" onclick=\"showWithdraw()\">📤 WITHDRAW</button></div><div id=\"wmExtra\" style=\"margin-top:10px\"></div></div><div id=\"_l\"></div>";
 p.onclick=function(e){if(e.target===p)p.classList.remove("show");};
 document.body.appendChild(p);}p.classList.toggle("show");
 if(p.classList.contains("show"))window._r();}
@@ -452,6 +454,42 @@ async function pillRefresh(){try{var d=await(await fetch("/api/wallet")).json();
 if(d.bnb){document.getElementById("pBal").textContent=d.bnb.toFixed(3)+" BNB";
 document.getElementById("pUsd").textContent="$"+d.usd.toFixed(2);}}catch(e){}}
 setInterval(pillRefresh,60000);
+
+// Deposit/Withdraw
+var WALLET_ADDR = "0xC41828401DABEE1B7Ceaa0E4410601020dB39774";
+function showDeposit(){
+  var e=document.getElementById("wmExtra");
+  e.innerHTML='<div style="text-align:center;padding:8px;font-family:var(--mono)">'
+    +'<div style="font-size:0.5rem;color:var(--fg3);margin-bottom:6px">SEND FUNDS TO THIS ADDRESS</div>'
+    +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='+WALLET_ADDR+'" style="width:120px;height:120px;border-radius:8px;margin-bottom:6px">'
+    +'<div style="font-size:0.45rem;color:var(--gold);word-break:break-all;padding:4px;background:var(--bg3);border-radius:4px;cursor:pointer" onclick="navigator.clipboard.writeText(WALLET_ADDR);this.textContent=\'Copied!\'">'+WALLET_ADDR+'</div>'
+    +'<div style="font-size:0.4rem;color:var(--fg3);margin-top:4px">Only send BEP-20 tokens on BSC</div></div>';
+}
+function showWithdraw(){
+  var e=document.getElementById("wmExtra");
+  e.innerHTML='<div style="font-family:var(--mono);padding:4px">'
+    +'<div style="font-size:0.5rem;color:var(--fg3);margin-bottom:6px">WITHDRAW TO ADDRESS</div>'
+    +'<input id="wdAddr" placeholder="0x..." style="width:100%;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-size:0.5rem;margin-bottom:6px;font-family:var(--mono)">'
+    +'<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">'
+    +'<input id="wdAmt" placeholder="Amount" style="flex:1;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-size:0.5rem;font-family:var(--mono)">'
+    +'<select id="wdToken" style="padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--gold);font-size:0.5rem;font-family:var(--mono)"><option selected>BUSD</option><option>BNB</option><option>USDT</option></select></div>'
+    +'<button class="wm-btn" style="width:100%;padding:6px" onclick="execWithdraw()">SEND</button>'
+    +'<div id="wdResult" style="font-size:0.45rem;color:var(--green);text-align:center;margin-top:4px"></div></div>';
+}
+async function execWithdraw(){
+  var addr=document.getElementById("wdAddr").value.trim();
+  var amt=document.getElementById("wdAmt").value.trim();
+  var tok=document.getElementById("wdToken").value;
+  if(!addr||!amt){document.getElementById("wdResult").textContent="Fill in all fields";return;}
+  var btn=document.querySelector("#wmExtra button");
+  btn.textContent="SENDING...";btn.disabled=true;
+  try{
+    var r=await fetch("/api/manual/withdraw?to="+addr+"&amount="+amt+"&token="+tok);
+    var d=await r.json();
+    document.getElementById("wdResult").textContent=d.executed?"✅ Sent: "+d.tx.slice(0,12)+"...":"❌ "+d.reason;
+  }catch(e){document.getElementById("wdResult").textContent="Error: "+e;}
+  btn.textContent="SEND";btn.disabled=false;
+}
 // Also ensure USD updates on data load
 var _orig=window.fetchQuotes;if(_orig){window.fetchQuotes=function(){_orig();setTimeout(u,2000);};}
 
