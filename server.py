@@ -96,6 +96,80 @@ VERIFIED_TOKENS = {
 # TWAK-native tokens (can use symbol names directly)
 TWAK_NATIVE = ["BUSD", "USDT", "USDC", "DAI", "ETH"]
 
+# ===== TOKEN CATEGORIES (for pair-specific strategy params) =====
+TOKEN_CATEGORY = {}
+for _sym in ["BUSD","USDT","USDC","DAI"]: TOKEN_CATEGORY[_sym] = "stable"
+for _sym in ["ETH","BTCB","WBNB","SOL","XRP","ADA","DOGE","AVAX","DOT","LINK","UNI","AAVE","NEAR","INJ","ATOM","BCH","LTC","ETC","TRX","FTM","ARB","OP","SUI","APT"]: TOKEN_CATEGORY[_sym] = "blue_chip"
+for _sym in ["CAKE","PENDLE","COMP","SUSHI","BIFI","ALPACA","LISTA","BELT","CREAM","BORING","YFI","RDNT"]: TOKEN_CATEGORY[_sym] = "defi"
+for _sym in ["SHIB","FLOKI","PEPE","WIF","BONK","BABYDOGE","ELON"]: TOKEN_CATEGORY[_sym] = "meme"
+for _sym in ["AXS","SAND","MANA","MBOX","GMT","TLM","RACA","BNX","ALICE"]: TOKEN_CATEGORY[_sym] = "gaming"
+for _sym in ["XVS","TWT","C98","SFP","HFT","PENGU","ZK","BAKE","CHR","XCAD"]: TOKEN_CATEGORY[_sym] = "bsc_native"
+for _sym in ["STG","ZRO"]: TOKEN_CATEGORY[_sym] = "cross_chain"
+
+CATEGORY_PARAMS = {
+    "blue_chip":   {"stop": 0.06, "max_busd": 2.50, "amt_name": "blue chip"},
+    "defi":        {"stop": 0.08, "max_busd": 2.00, "amt_name": "defi"},
+    "meme":        {"stop": 0.12, "max_busd": 1.00, "amt_name": "meme"},
+    "gaming":      {"stop": 0.10, "max_busd": 1.50, "amt_name": "gaming"},
+    "bsc_native":  {"stop": 0.08, "max_busd": 1.50, "amt_name": "bsc native"},
+    "cross_chain": {"stop": 0.06, "max_busd": 2.00, "amt_name": "cross-chain"},
+    "stable":      {"stop": 0,    "max_busd": 0,    "amt_name": "stable"},
+}
+
+def get_category(sym):
+    return TOKEN_CATEGORY.get(sym, "blue_chip")  # default = blue chip
+
+def score_to_busd(score, max_score, cat):
+    """Convert weighted score to BUSD trade amount with category cap."""
+    if cat == "stable":
+        return 0
+    params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
+    base = 1.0  # minimum $1 for competition
+    if score >= max_score:
+        base = 2.50
+    elif score >= max_score - 1:
+        base = 1.50
+    return min(base, params["max_busd"])
+
+# ===== POSITION TRACKING =====
+POSITIONS = []  # [{token,address,entry_price,amt_tokens,amt_busd,entry_time,cat,tier1,tier2,tier3,stop_loss,highest}]
+POSITIONS_LOCK = threading.Lock()
+MAX_POSITIONS = 4
+
+def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
+    with POSITIONS_LOCK:
+        if len(POSITIONS) >= MAX_POSITIONS:
+            return False, f"Max {MAX_POSITIONS} positions reached"
+        cat_params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
+        stop_pct = cat_params["stop"]
+        now = time.time()
+        POSITIONS.append({
+            "token": token, "address": address,
+            "entry_price": entry_price_busd, "amt_tokens": amt_tokens,
+            "amt_busd": amt_busd, "entry_time": now, "cat": cat,
+            "tier1_sold": False, "tier2_sold": False, "tier3_sold": False,
+            "stop_loss": entry_price_busd * (1 - stop_pct),
+            "highest": entry_price_busd,
+            "trailing_stop": entry_price_busd * (1 - stop_pct),
+        })
+        PROGRESS.append({"action":"OPEN","sym":token,"amt":f"{amt_busd}BUSD","time":now})
+        return True, f"Position opened: {amt_tokens:.4f} {token} for ${amt_busd:.2f}"
+
+def close_position(idx, reason="closed"):
+    with POSITIONS_LOCK:
+        if idx < len(POSITIONS):
+            p = POSITIONS.pop(idx)
+            PROGRESS.append({"action":"CLOSE","sym":p["token"],"reason":reason,"time":time.time()})
+            return True
+        return False
+
+def get_position_count():
+    with POSITIONS_LOCK:
+        return len(POSITIONS)
+
+# ===== PROGRESS LOG =====
+PROGRESS = []  # [{action, sym, amt, reason, time}]
+
 def twak_jsonrpc(method, args):
     """Execute a TWAK JSON-RPC call and return parsed result."""
     p = subprocess.Popen(['/Users/cryptot/.hermes/node/bin/twak','serve'],
@@ -269,40 +343,162 @@ def refresh_wallet():
         time.sleep(60)
 
 def scan_strategy():
+    """11-signal weighted strategy. Returns best candidate with scores."""
     with cache_lock:
         qd = cache.get("quotes", {})
+        gd = cache.get("global", {}).get("data", {})
+        der = cache.get("derivatives", {})
+        mcap_ta = cache.get("mcap_ta", {})
+        narr = cache.get("narratives", [])
+        macro = cache.get("macro_events", [])
+        info_data = cache.get("token_info", {})
     if not isinstance(qd, dict) or "data" not in qd:
         return {"candidate": None, "reason": "No data", "signals": 0}
+    
+    max_score = 18  # max weighted points (11 signals)
     coins = []
+    btc_price = None
+    btc_24h = 0
+    btc_7d = 0
+    # Get BTC price for relative strength
+    for sym, info in qd["data"].items():
+        if sym == "BTC":
+            btc_price = info.get("quote", {}).get("USD", {}).get("price", 0)
+            btc_24h = info.get("quote", {}).get("USD", {}).get("percent_change_24h", 0)
+            btc_7d = info.get("quote", {}).get("USD", {}).get("percent_change_7d", 0)
+    
     for sym, info in qd["data"].items():
         q = info.get("quote", {}).get("USD", {})
         if not q:
             continue
-        coins.append({"s": sym, "p": q.get("price", 0), "c24": q.get("percent_change_24h", 0), "c7": q.get("percent_change_7d", 0), "v": q.get("volume_24h", 0)})
+        coins.append({"s": sym, "p": q.get("price", 0),
+            "c24": q.get("percent_change_24h", 0),
+            "c7": q.get("percent_change_7d", 0),
+            "v": q.get("volume_24h", 0),
+            "mc": q.get("market_cap", 0)})
+    
     scored = []
     for c in coins:
-        if c["p"] < 0.01 or c["s"] in ("USDT", "USDC", "BUSD"):
+        if c["p"] < 0.01 or get_category(c["s"]) == "stable":
             continue
-        sig = 0
-        det = []
-        if c["c7"] > 5:
-            sig += 1; det.append("MOM+")
-        if c["c24"] > -3:
-            sig += 1; det.append("STBL")
-        if c["v"] > 10e6:
-            sig += 1; det.append("VOL+")
-        sig += 1; det.append("STR")
-        if c["c7"] > 10:
-            sig += 1; det.append("BUL+")
-        if c["c24"] > 0:
-            sig += 1; det.append("24H+")
-        if c["c7"] > c["c24"]:
-            sig += 1; det.append("ACC+")
-        sig += 1; det.append("REG")
-        scored.append({"s": c["s"], "score": sig, "p": c["p"], "c24": c["c24"], "c7": c["c7"], "det": det})
+        
+        sym = c["s"]
+        score = 0  # weighted total
+        details = []
+        
+        # Signal 1: Momentum (weight 3)
+        mom = 0
+        if c["c7"] > 10: mom += 2
+        elif c["c7"] > 5: mom += 1
+        if c["c24"] > 2: mom += 1
+        score += min(mom, 3)
+        if mom >= 2: details.append("MOM+3")
+        elif mom >= 1: details.append("MOM+1")
+        
+        # Signal 2: Volume conviction (weight 2)
+        vol = 0
+        if c["v"] > 50e6: vol += 2
+        elif c["v"] > 10e6: vol += 1
+        if c["mc"] > 0 and c["v"] / c["mc"] > 0.05: vol += 1
+        score += min(vol, 2)
+        if vol >= 2: details.append("VOL+2")
+        
+        # Signal 3: Relative strength vs BTC (weight 2)
+        rs = 0
+        if btc_price:
+            rel_24h = c["c24"] - btc_24h
+            rel_7d = c["c7"] - btc_7d
+            if rel_7d > 5: rs += 2
+            elif rel_7d > 2: rs += 1
+            if rel_24h > 2: rs += 1
+        score += min(rs, 2)
+        if rs >= 2: details.append("RS+2")
+        
+        # Signal 4: Market regime (weight 1)
+        reg = 0
+        if isinstance(gd, dict):
+            fg = gd.get("fear_and_greed", {}).get("value", 50) if isinstance(gd.get("fear_and_greed"), dict) else 50
+            alt = gd.get("altcoin_season_index", 50) if isinstance(gd.get("altcoin_season_index"), (int, float)) else 50
+            if fg < 30: reg += 1  # Fear = buy opportunity
+            if alt > 40: reg += 1  # Alt season favorable
+        score += min(reg, 1)
+        
+        # Signal 5: Derivatives (weight 2)
+        der_score = 0
+        if isinstance(der, dict):
+            fr = der.get("funding_rate", {}).get("average", {}).get("current", "0%")
+            fr_val = float(str(fr).replace("%","")) if isinstance(fr, str) else 0
+            if fr_val > 0: der_score += 1
+            oi = der.get("open_interest", {}).get("total", {}).get("current", "0")
+            oi_val = float(str(oi).replace("B","").replace("M","")) if isinstance(oi, str) else 0
+            if oi_val > 350: der_score += 1
+        score += min(der_score, 2)
+        if der_score >= 1: details.append("DER+1")
+        
+        # Signal 6: Market cap TA (weight 1)
+        mcap_sig = 0
+        if isinstance(mcap_ta, dict):
+            mcap_rsi = mcap_ta.get("rsi", {})
+            if isinstance(mcap_rsi, dict):
+                rsi_val = mcap_rsi.get("rsi7", 50)
+                if 40 < rsi_val < 70: mcap_sig += 1
+        score += min(mcap_sig, 1)
+        
+        # Signal 7: Macro events (weight 1)
+        macro_sig = 0
+        if isinstance(macro, list) and len(macro) > 0:
+            macro_sig += 1  # Events coming = opportunity
+        score += min(macro_sig, 1)
+        
+        # Signal 8: Narrative fit (weight 2)
+        narr_sig = 0
+        cat = get_category(sym)
+        if cat == "meme" and isinstance(narr, list) and any("meme" in str(n).lower() for n in narr):
+            narr_sig += 2
+        elif cat == "defi" and isinstance(narr, list) and any("defi" in str(n).lower() for n in narr):
+            narr_sig += 2
+        elif cat == "blue_chip" and isinstance(narr, list):
+            narr_sig += 1
+        score += min(narr_sig, 2)
+        if narr_sig >= 1: details.append("NARR+"+str(int(narr_sig)))
+        
+        # Signal 9: Technical strength (weight 2)
+        tech_sig = 0
+        if c["c7"] > c["c24"]: tech_sig += 1  # Acceleration
+        if c["c24"] > 0: tech_sig += 1  # Currently green
+        if c["c7"] > 3 and c["c24"] > -1: tech_sig += 1  # Trend holds
+        score += min(tech_sig, 2)
+        if tech_sig >= 1: details.append("TECH+"+str(int(tech_sig)))
+        
+        # Signal 10: Fundamentals (weight 1)
+        fund_sig = 0
+        if sym in info_data:
+            info = info_data[sym]
+            if info.get("has_website"): fund_sig += 0.5
+            if info.get("has_twitter"): fund_sig += 0.3
+            if info.get("has_whitepaper"): fund_sig += 0.2
+        score += min(int(fund_sig), 1)
+        
+        # Signal 11: Trend acceleration (weight 1)
+        acc = 0
+        if c["c7"] > c["c24"] and c["c24"] > 0: acc += 1
+        score += min(acc, 1)
+        if acc >= 1: details.append("ACC+1")
+        
+        scored.append({"s": sym, "score": round(score, 1), "p": c["p"],
+            "c24": c["c24"], "c7": c["c7"], "det": details, "max": max_score})
+    
     scored.sort(key=lambda x: x["score"], reverse=True)
     best = scored[0] if scored else None
-    return {"candidate": best, "signals": best["score"] if best else 0, "total": len(coins), "scored": len(scored)}
+    
+    return {
+        "candidate": best,
+        "signals": best["score"] if best else 0,
+        "max_score": max_score,
+        "total": len(coins),
+        "scored": len(scored),
+        "entry_threshold": 14,
+    }
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -317,30 +513,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/strategy/execute":
             try:
                 scan = scan_strategy()
-                if not scan.get("candidate") or scan.get("signals",0) < 4:
-                    self.send_json({"executed":False,"reason":"Need 4/8+ signals, got "+str(scan.get("signals",0)),"scored":scan.get("scored",0)})
+                score = scan.get("signals", 0)
+                threshold = scan.get("entry_threshold", 14)
+                max_sc = scan.get("max_score", 18)
+                if not scan.get("candidate") or score < 14:
+                    self.send_json({"executed":False,"reason":f"Need {threshold}/{max_sc}s, got {score}","scored":scan.get("scored",0)})
                 else:
+                    # Check position limit
+                    if get_position_count() >= MAX_POSITIONS:
+                        self.send_json({"executed":False,"reason":f"Max {MAX_POSITIONS} positions reached"})
+                        return
                     pick = scan["candidate"]
                     sym = pick["s"]
-                    to_token = "BUSD"  # default fallback
-                    # Route: TWAK-native → symbol, otherwise → verified address
+                    cat = get_category(sym)
+                    busd_amt = score_to_busd(score, max_sc, cat)
+                    if busd_amt <= 0:
+                        self.send_json({"executed":False,"reason":f"No trade amount for {sym} (category: {cat})"})
+                        return
+                    addr = None
                     if sym in TWAK_NATIVE:
-                        to_token = sym
-                        result = twak_jsonrpc("swap",{"fromToken":"BNB","toToken":to_token,"amount":"0.001","fromChain":"bsc","toChain":"bsc","slippage":"1"})
+                        addr = sym  # TWAK accepts symbol for native tokens
                     elif sym in VERIFIED_TOKENS:
                         addr = VERIFIED_TOKENS[sym]
-                        # Security check: verify token is safe before swapping
                         safe, reason = check_token_safe(sym, addr)
                         if not safe:
-                            self.send_json({"executed":False,"reason":f"Security blocked {sym}: {reason}","candidate":sym,"signals":scan["signals"]})
+                            self.send_json({"executed":False,"reason":f"Security blocked {sym}: {reason}","candidate":sym,"signals":score})
                             return
                         print(f"  🛡️ {sym} passed risk check: {reason}")
-                        result = twak_jsonrpc("swap",{"fromToken":"BNB","toToken":addr,"amount":"0.001","fromChain":"bsc","toChain":"bsc","slippage":"5"})
                     else:
-                        # Unknown token — fall back to BUSD via TWAK
-                        print(f"  ⚠️ {sym} not in verified list, falling back to BUSD")
-                        to_token = "BUSD"
-                        result = twak_jsonrpc("swap",{"fromToken":"BNB","toToken":to_token,"amount":"0.001","fromChain":"bsc","toChain":"bsc","slippage":"1"})
+                        self.send_json({"executed":False,"reason":f"{sym} not in verified list","candidate":sym,"signals":score})
+                        return
+                    # Execute swap: BUSD → token
+                    result = twak_jsonrpc("swap",{"fromToken":"BUSD","toToken":addr,"amount":str(busd_amt),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                     text = twak_swap_text(result)
                     sd = json.loads(text) if isinstance(text, str) else text
                     tx_hash = sd.get("hash","")
@@ -348,14 +552,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if success:
                         TRADE_COUNT += 1
                         ts = dt.utcnow().strftime("%d %b %H:%M")
-                        if sym in TWAK_NATIVE or sym not in VERIFIED_TOKENS:
-                            pair = "BNB→"+to_token
-                        else:
-                            pair = "BNB→"+sym
-                        TRADE_HISTORY.append({"time":ts,"pair":pair,"dir":"SELL","amt":sd.get("summary","0.001 BNB swap"),"tx":tx_hash})
-                        self.send_json({"executed":True,"candidate":sym,"signals":scan["signals"],"tx":tx_hash,"explorer":sd.get("explorer",""),"toToken":sym if sym in VERIFIED_TOKENS else to_token,"summary":sd.get("summary","")})
+                        tr = sd.get("summary","")
+                        # Calculate entry price (BUSD per token)
+                        entry_price = None
+                        tokens_received = None
+                        if "->" in tr:
+                            parts = tr.split("->")
+                            if len(parts) >= 2:
+                                try:
+                                    tokens_received = float(parts[1].strip().split(" ")[0])
+                                    entry_price = busd_amt / tokens_received if tokens_received > 0 else None
+                                except: pass
+                        pair_str = f"BUSD→{sym}"
+                        TRADE_HISTORY.append({"time":ts,"pair":pair_str,"dir":"BUY","amt":tr,"tx":tx_hash})
+                        # Track position
+                        if entry_price and tokens_received:
+                            add_position(sym, addr, entry_price, tokens_received, busd_amt, cat)
+                        self.send_json({"executed":True,"candidate":sym,"signals":score,"max_score":max_sc,"threshold":threshold,"tx":tx_hash,"explorer":sd.get("explorer",""),"busd":busd_amt,"category":cat,"summary":tr,"entry_price":entry_price,"tokens":tokens_received})
                     else:
-                        self.send_json({"executed":False,"reason":sd.get("message","Swap failed"),"candidate":sym,"signals":scan["signals"]})
+                        self.send_json({"executed":False,"reason":sd.get("message","Swap failed"),"candidate":sym,"signals":score})
             except Exception as e:
                 self.send_json({"executed":False,"error":str(e)})
         elif p.startswith("/api/manual/swap"):
@@ -410,7 +625,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if not safe:
                     self.send_json({"executed":False,"reason":"Security blocked: "+reason}); return
                 print(f"  🛡️ {to_t} passed risk check: {reason}")
-                result = twak_jsonrpc("swap",{"fromToken":"BNB","toToken":addr,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                result = twak_jsonrpc("swap",{"fromToken":"BUSD","toToken":addr,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                 text = twak_swap_text(result)
                 sd = json.loads(text) if isinstance(text, str) else text
                 tx_hash = sd.get("hash","")
@@ -439,6 +654,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_json(wd)
         elif p == "/api/trades":
             self.send_json(TRADE_HISTORY)
+        elif p == "/api/positions":
+            with POSITIONS_LOCK:
+                pos_copy = [dict(x, entry_time=round(x["entry_time"],0)) for x in POSITIONS]
+            self.send_json({"count": len(pos_copy), "max": MAX_POSITIONS, "positions": pos_copy})
+        elif p == "/api/progress":
+            self.send_json({"count": len(PROGRESS), "events": PROGRESS[-50:]})
         elif p == "/api/verified-tokens":
             """Return the list of verified tokens with their addresses."""
             info = {}
@@ -468,6 +689,54 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
+def refresh_positions():
+    """Background thread: profit-taking ladder & trailing stop-loss."""
+    global TRADE_COUNT
+    while True:
+        try:
+            with cache_lock:
+                qd = cache.get("quotes", {})
+            with POSITIONS_LOCK:
+                for i in range(len(POSITIONS) - 1, -1, -1):
+                    p = POSITIONS[i]
+                    cur_price = None
+                    if isinstance(qd, dict) and "data" in qd:
+                        q = qd["data"].get(p["token"], {}).get("quote", {}).get("USD", {})
+                        if q: cur_price = q.get("price", 0)
+                    if not cur_price or cur_price <= 0: continue
+                    entry = p["entry_price"]
+                    pnl = (cur_price - entry) / entry
+                    if cur_price > p["highest"]:
+                        p["highest"] = cur_price
+                        cp = CATEGORY_PARAMS.get(p["cat"], CATEGORY_PARAMS["blue_chip"])
+                        p["trailing_stop"] = cur_price * (1 - cp["stop"])
+                    # Stop-loss
+                    if cur_price <= p["trailing_stop"] and cur_price < entry:
+                        close_position(i, f"stop {pnl*100:.1f}%")
+                        print(f"  🛑 STOP {p['token']} {pnl*100:.1f}%")
+                        continue
+                    # Profit tiers
+                    for pct, key, frac, label in [(0.08,"tier1_sold",0.25,"+8%"),(0.15,"tier2_sold",0.25,"+15%"),(0.25,"tier3_sold",0.25,"+25%")]:
+                        if pnl >= pct and not p[key]:
+                            sell = p["amt_tokens"] * frac
+                            if sell > 0:
+                                try:
+                                    r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"BUSD","amount":str(sell),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                                    t = twak_swap_text(r)
+                                    d = json.loads(t) if isinstance(t,str) else t
+                                    if d.get("success") or d.get("hash"):
+                                        p[key] = True
+                                        p["amt_tokens"] -= sell
+                                        TRADE_COUNT += 1
+                                        ts = dt.utcnow().strftime("%d %b %H:%M")
+                                        TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→BUSD","dir":label,"amt":d.get("summary",f"sold"),"tx":d.get("hash","")})
+                                        print(f"  💰 {label}: {p['token']} → BUSD")
+                                except: pass
+                    if p["amt_tokens"] < 0.0001:
+                        close_position(i, "sold out")
+        except: pass
+        time.sleep(60)
+
 if __name__ == "__main__":
     print("📊 Server on port {}".format(PORT))
     print("  📊 Market data refreshing every {}s...".format(CACHE_TTL))
@@ -475,6 +744,8 @@ if __name__ == "__main__":
     t.start()
     tw = threading.Thread(target=refresh_wallet, daemon=True)
     tw.start()
+    tp = threading.Thread(target=refresh_positions, daemon=True)
+    tp.start()
     time.sleep(2)
     try:
         gd = cache.get("global", {}).get("data", {})
