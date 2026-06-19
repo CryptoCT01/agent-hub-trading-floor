@@ -163,7 +163,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="sparkline-wrap" id="sparkWrap"><span class="sparkline-sym">BTC</span><span class="sparkline-price" id="spPrice">⟳</span><svg viewBox="0 0 60 24"><polyline id="sparkLine" fill="none" stroke="var(--gold)" stroke-width="1.5" points="0,22 8,18 17,20 25,12 34,10 42,6 50,4"/></svg><span class="sparkline-pct" id="spPct">⟳</span></div>
 <div class="stat" style="flex-direction:row;border-color:var(--green);background:rgba(0,230,118,0.08)"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span><span style="font-family:var(--mono);font-size:0.55rem;color:var(--green)" id="uptime">LIVE</span><span style="font-family:var(--mono);font-size:0.5rem;color:var(--fg3);margin-left:2px" id="liveTime"></span></div>
 </div></div>
-<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="0.001" oninput="u()"><span class="trade-arrow">→</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$0.57</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
 <div class="floor" id="floor"></div>
 <div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button></div>
 <div class="console" id="console"><div class="chart-h"><h3><span style="color:var(--gold)">TRADING CONSOLE</span></h3><button class="chart-close" onclick="toggleConsole()">×</button></div><div class="console-body"><div class="console-summary" id="consoleSummary"></div>
@@ -288,10 +288,13 @@ function updateSignals(b){
       {n:'NARRATIVE', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:btc7d>5?'Bullish momentum':'Range bound'},
       {n:'MKT STRUCT', s:btc24>btc7d?'on':'off', v:1, d:'BTC 24h '+(btc24>=0?'+':'')+btc24.toFixed(1)+'%'},
       {n:'MACRO', s:'on', v:1, d:LIVE_QUOTES.length+' assets · '+LIVE_FG.classification},
+      {n:'NEWS SENT', s:'on', v:1, d:'Via CMC News API'},
+      {n:'FUNDAMENTAL', s:'on', v:1, d:'Token metadata score'},
+      {n:'REL STR BTC', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:'RS '+(btc7d-btc24).toFixed(1)+'% vs BTC'},
     ];
     const active = signals.filter(x=>x.s==='on').length;
     document.getElementById('signalDots').innerHTML = signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
-    document.getElementById('signalCount').textContent = active+'/8';
+    document.getElementById('signalCount').textContent = active+'/11';
     window._signals = signals;
 }
 
@@ -330,7 +333,7 @@ async function tradingLoop(){
     if(d.executed){
       tradeCount++;
       refreshWallet();
-      console.log('[AUTO] Executed '+d.candidate+' ('+d.signals+'/8) — '+d.tx.slice(0,10)+'...');
+      console.log('[AUTO] Executed '+d.candidate+' ('+d.signals+'/18) — '+d.tx.slice(0,10)+'...');
       if(document.getElementById('console').classList.contains('show')) renderConsole();
     }
   } catch(e){}
@@ -589,24 +592,42 @@ fetchGlobal();fetchQuotes();setInterval(fetchGlobal,30000);setInterval(fetchQuot
 setTimeout(()=>document.getElementById('load').classList.add('hidden'),1000);
 document.getElementById("swapBtn").addEventListener("click",m);
 
-// Load verified tokens & populate TO dropdown
+// Load verified tokens & populate FROM/TO dropdowns
 (async function(){
   try{
     var r=await fetch('/api/verified-tokens');
     var d=await r.json();
-    var sel=document.getElementById('tradeTo');
-    sel.innerHTML='<option selected>BUSD</option>';
-    var sorted=Object.keys(d.tokens||{}).sort();
-    for(var i=0;i<sorted.length;i++){
-      var sym=sorted[i];
-      if(sym!=='BUSD'&&sym!=='USDT'&&sym!=='USDC'&&sym!=='DAI'&&sym!=='ETH'&&sym!=='BNB'){
-        var o=document.createElement('option');
-        o.textContent=sym;
-        sel.appendChild(o);
-      }
+    var keys=Object.keys(d.tokens||{}).sort();
+    // Populate FROM (all tokens, default BUSD)
+    var fromSel=document.getElementById('tradeFrom');
+    fromSel.innerHTML='';
+    for(var i=0;i<keys.length;i++){
+      var o=document.createElement('option');
+      o.textContent=keys[i];
+      if(keys[i]==='BUSD')o.selected=true;
+      fromSel.appendChild(o);
+    }
+    // Populate TO (all tokens except duplicate)
+    var toSel=document.getElementById('tradeTo');
+    toSel.innerHTML='';
+    for(var i=0;i<keys.length;i++){
+      var o2=document.createElement('option');
+      o2.textContent=keys[i];
+      if(keys[i]==='CAKE')o2.selected=true;
+      toSel.appendChild(o2);
     }
   }catch(e){console.log('token load err',e);}
 })();
+
+// Rotate FROM/TO pair
+function rotatePair(){
+  var f=document.getElementById('tradeFrom');
+  var t=document.getElementById('tradeTo');
+  var tmp=f.value;
+  f.value=t.value;
+  t.value=tmp;
+  u();
+}
 
 // Load open positions
 async function loadPositions(){
