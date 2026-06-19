@@ -286,7 +286,7 @@ def refresh_cache():
         time.sleep(CACHE_TTL)
 
 TRADE_HISTORY = []
-TRADE_COUNT = 0  # fresh start for v2 strategy
+TRADE_COUNT = 0  # fresh start for competition
 
 def refresh_wallet():
     while True:
