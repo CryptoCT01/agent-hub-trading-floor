@@ -1,0 +1,84 @@
+🧵 1/5
+
+Major update to my Agent Hub Trading Floor — **v1.3 is live** 🚀
+
+What started as an autonomous trading bot has evolved into a **complete trading terminal** — auto mode, manual override, and live portfolio management, all powered by @coinmarketcap Agent Hub data.
+
+#CMCAgentHub
+
+---
+
+2/5
+
+🤖 **Autonomous Trading Bot** (v2.1)
+
+The agent scans 35+ coins every 120s using an **8-signal multi-layer engine**:
+
+📈 Momentum — price + volume surges
+📊 Technical — RSI, MACD, structure
+🔗 On-Chain — whale distribution, holder metrics
+📉 Derivatives — funding rates, open interest
+🌍 Regime — Fear & Greed, Alt Season, dominance
+🧠 Narratives — sector rotation
+🏛️ Market Structure — total cap TA signals
+📅 Macro — CPI, Fed, catalyst calendar
+
+Entry threshold: 4/8 signals. Max 3 positions. Fully autonomous execution on BSC.
+
+#CMCAgentHub
+
+---
+
+3/5
+
+🖐️ **New: Manual Trading Override**
+
+Sometimes you want to trade on your own terms. Added a full manual swap interface:
+
+• FROM/TO dropdown — swap between BNB, BUSD, USDT, USDC, DAI, ETH
+• Live USD value updates as you type
+• One-click SWAP executes instantly via TWAK MCP on BSC
+• Button shows exactly what you received
+
+Auto mode finds opportunities. Manual mode gives you control. Both work side by side.
+
+#CMCAgentHub
+
+---
+
+4/5
+
+💰 **New: Live Portfolio Wallet**
+
+Click the wallet pill to see your entire portfolio at a glance:
+
+• All token balances with live USD values
+• Real-time total portfolio worth
+• **Quick Sell** — click SELL on any token → auto-swaps full balance to BNB in one click
+• Wallet refreshes every 60s from live on-chain data
+
+Track what you hold. Sell when you want. All from the dashboard.
+
+#CMCAgentHub
+
+---
+
+5/5
+
+🏗️ **22 CMC Skill Stations** power the entire system:
+
+📈 Breakout Scanner | 📊 Perp Scanner | 🔍 Perp Analysis
+🌅 Daily Overview | 🔗 BTC Correlation | 🏦 ETF Flows
+💧 Liquidity | 🧠 Narratives | 😰 Fear & Greed
+🤖 AI Scanner | 🌐 DePIN | 🏛️ RWA Tokens
+🎮 Gaming | ⚡ L2 Activity | 🗳️ Governance
+🎁 Airdrops | 🔓 Unlocks | 🔄 DEX Flow
+📋 Options | 🪙 Stablecoins | 🏗️ DeFi TVL | 📅 Macro Calendar
+
+All data from @coinmarketcap Agent Hub. All execution on BSC via Trust Wallet Agent Kit.
+
+**v1.3**: Autonomous bot + Manual override + Portfolio wallet + 22 skills + Live signal scoring.
+
+@coinmarketcap #CMCAgentHub
+
+Built by @CryptoCTO1 🐦
