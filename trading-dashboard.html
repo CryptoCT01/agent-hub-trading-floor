@@ -398,19 +398,14 @@ function u(){var a=parseFloat(document.getElementById("tradeAmt").value)||0;
 var f=document.getElementById("tradeFrom").value;
 var q=LIVE_QUOTES.find(function(x){return x.s===f;});
 var e=document.getElementById("tradeUsd");if(e)e.textContent="~$"+(a*(q?q.p:575)).toFixed(2);}
-async function m(){var a=document.getElementById("tradeAmt").value||"0.001";
+async function m(){var a=document.getElementById("tradeAmt").value||"1";
 var f=document.getElementById("tradeFrom").value;
 var t=document.getElementById("tradeTo").value;
 if(f===t){console.log("same asset");return;}
 var b=document.querySelector(".trade-btn.swap");
 if(b){b.textContent="...";b.style.opacity="0.6";}
 try{
-  var twakNatives=["BNB","BUSD","USDT","USDC","DAI","ETH"];
-  var endpoint="/api/manual/swap";
-  if(twakNatives.indexOf(f)===-1||twakNatives.indexOf(t)===-1){
-    endpoint="/api/manual/alt-swap?to="+t+"&amount="+a;
-  }
-  var r=await fetch(endpoint+(endpoint.indexOf("?")===-1?"?from="+f+"&to="+t+"&amount="+a:""));
+  var r=await fetch("/api/manual/swap?from="+f+"&to="+t+"&amount="+a);
   var d=await r.json();
 if(d&&d.executed){
   if(b){b.textContent=d.summary.split("->").pop().trim().slice(0,18);b.style.opacity="1";}
@@ -448,7 +443,7 @@ var b=document.createElement("span");b.className="wm-bal";b.textContent=itm.bal.
 var v=document.createElement("span");v.className="wm-usd";v.textContent="$"+itm.usd.toFixed(2);row.appendChild(v);
 if(itm.canSell){var btn=document.createElement("button");btn.className="wm-sell";btn.textContent="SELL";
 (function(s,b){btn.addEventListener("click",function(){var a=s==="BNB"?Math.max(0,b-0.002):b*0.9;
-if(a<=0)return;btn.textContent="...";fetch("/api/manual/swap?from="+s+"&to=BNB&amount="+a.toFixed(6)).then(function(r){return r.json();}).then(function(d){if(d.executed){btn.textContent="OK "+d.summary.split("->").pop().trim().slice(0,15);fetchWallet();renderTradeLog();setTimeout(function(){var p2=document.getElementById("wm");if(p2)p2.classList.remove("show");},2000);}}).catch(function(e){});});})(itm.sym,itm.bal);
+if(a<=0)return;btn.textContent="...";fetch("/api/manual/swap?from="+s+"&to=BUSD&amount="+a.toFixed(6)).then(function(r){return r.json();}).then(function(d){if(d.executed){btn.textContent="OK "+d.summary.split("->").pop().trim().slice(0,15);fetchWallet();renderTradeLog();setTimeout(function(){var p2=document.getElementById("wm");if(p2)p2.classList.remove("show");},2000);}}).catch(function(e){});});})(itm.sym,itm.bal);
 row.appendChild(btn);}
 c.appendChild(row);})(d.items[i]);}}catch(e){}};
 

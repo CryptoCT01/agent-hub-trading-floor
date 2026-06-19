@@ -168,7 +168,8 @@ This project demonstrates:
 
 ## 📄 License
 
-MIT — Free to use, modify, and submit for the CMC Buildathon.
+MIT — Free to use and modify for the CMC Buildathon.  
+For commercial use, partnerships, or forks, please reach out to **@CryptoCT01** on X/Twitter.
 
 ---
 

@@ -92,6 +92,8 @@ VERIFIED_TOKENS = {
     "BAKE": "0xE02dF9e3e622DeBdD69fb838bB799E3F168902c5",  # BakeryToken — BSC DEX
     # Cross-chain lending
     "RDNT": "0xf7DE7E8A6bd59ED41a4b5fe50278b3B7f31384dF",
+    # Native BNB (uses symbol name for swap, not contract address)
+    "BNB": "BNB",
 }
 # TWAK-native tokens (can use symbol names directly)
 TWAK_NATIVE = ["BUSD", "USDT", "USDC", "DAI", "ETH"]
@@ -574,58 +576,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"executed":False,"error":str(e)})
         elif p.startswith("/api/manual/swap"):
+            """Unified manual swap: any FROM token → any TO token."""
             try:
                 qs = urllib.parse.urlparse(self.path).query
                 qp = urllib.parse.parse_qs(qs)
-                from_t = qp.get("from",["BNB"])[0].upper()
-                to_t = qp.get("to",["BUSD"])[0].upper()
-                amt = qp.get("amount",["0.001"])[0]
-                native_tokens = ["BNB","BUSD","USDT","USDC","DAI","ETH"]
-                if from_t not in native_tokens:
-                    self.send_json({"executed":False,"reason":from_t+" not supported. Use: "+", ".join(native_tokens)}); return
-                if to_t not in native_tokens:
-                    self.send_json({"executed":False,"reason":to_t+" not supported. Use: "+", ".join(native_tokens)}); return
+                from_t = qp.get("from",["BUSD"])[0].upper()
+                to_t = qp.get("to",["CAKE"])[0].upper()
+                amt = qp.get("amount",["1"])[0]
                 if from_t == to_t:
                     self.send_json({"executed":False,"reason":"Cannot swap "+from_t+" to itself"}); return
-                import subprocess as sp
-                def mc(m,a):
-                    pr = sp.Popen(['/Users/cryptot/.hermes/node/bin/twak','serve'],stdin=sp.PIPE,stdout=sp.PIPE,stderr=sp.PIPE,
-                        env={'TWAK_ACCESS_ID':TWAK_ACCESS_ID or '','TWAK_HMAC_SECRET':TWAK_HMAC_SECRET or '','PATH':'/Users/cryptot/.hermes/node/bin'})
-                    rq = json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':m,'arguments':a}})
-                    o,_ = pr.communicate((rq+'\n').encode(), timeout=20)
-                    return json.loads(o.decode())
-                result = mc("swap",{"fromToken":from_t,"toToken":to_t,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"1"})
-                rt = result.get("result",{}).get("content",[{}])[0].get("text","{}")
-                sd = json.loads(rt) if isinstance(rt,str) else rt
-                tx_hash = sd.get("hash","")
-                success = sd.get("success",False) or bool(tx_hash)
-                if success:
-                    TRADE_COUNT += 1
-                    ts = dt.utcnow().strftime("%d %b %H:%M")
-                    label = "SWAP"
-                    TRADE_HISTORY.append({"time":ts,"pair":from_t+"→"+to_t,"dir":label,"amt":sd.get("summary",amt+" "+from_t+" swap"),"tx":tx_hash})
-                    self.send_json({"executed":True,"tx":tx_hash,"explorer":sd.get("explorer",""),"summary":sd.get("summary","")})
-                else:
-                    self.send_json({"executed":False,"reason":sd.get("message","Swap failed")})
-            except Exception as e:
-                self.send_json({"executed":False,"error":str(e)})
-        elif p.startswith("/api/manual/alt-swap"):
-            """Manual swap for verified tokens beyond TWAK's 6-token limit."""
-            try:
-                qs = urllib.parse.urlparse(self.path).query
-                qp = urllib.parse.parse_qs(qs)
-                to_t = qp.get("to",["CAKE"])[0].upper()
-                amt = qp.get("amount",["0.001"])[0]
-                if to_t not in VERIFIED_TOKENS:
-                    self.send_json({"executed":False,"reason":to_t+" not in verified list. Available: "+", ".join(sorted(VERIFIED_TOKENS.keys()))}); return
-                if to_t in TWAK_NATIVE:
-                    self.send_json({"executed":False,"reason":to_t+" is TWAK-native. Use /api/manual/swap instead"}); return
-                addr = VERIFIED_TOKENS[to_t]
-                safe, reason = check_token_safe(to_t, addr)
-                if not safe:
-                    self.send_json({"executed":False,"reason":"Security blocked: "+reason}); return
-                print(f"  🛡️ {to_t} passed risk check: {reason}")
-                result = twak_jsonrpc("swap",{"fromToken":"BUSD","toToken":addr,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                def resolve(sym):
+                    if sym == "BNB": return "BNB"
+                    if sym in TWAK_NATIVE: return sym
+                    if sym in VERIFIED_TOKENS: return VERIFIED_TOKENS[sym]
+                    return None
+                from_addr = resolve(from_t)
+                to_addr = resolve(to_t)
+                if not from_addr:
+                    self.send_json({"executed":False,"reason":from_t+" not supported"}); return
+                if not to_addr:
+                    self.send_json({"executed":False,"reason":to_t+" not supported"}); return
+                for sym, addr in [(from_t, from_addr), (to_t, to_addr)]:
+                    if sym not in TWAK_NATIVE and sym != "BNB" and addr != "BNB":
+                        safe, reason = check_token_safe(sym, addr)
+                        if not safe:
+                            self.send_json({"executed":False,"reason":f"Security blocked {sym}: {reason}"}); return
+                        print(f"  🛡️ {sym} passed risk check: {reason}")
+                result = twak_jsonrpc("swap",{"fromToken":from_addr,"toToken":to_addr,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                 text = twak_swap_text(result)
                 sd = json.loads(text) if isinstance(text, str) else text
                 tx_hash = sd.get("hash","")
@@ -633,12 +610,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if success:
                     TRADE_COUNT += 1
                     ts = dt.utcnow().strftime("%d %b %H:%M")
-                    TRADE_HISTORY.append({"time":ts,"pair":"BNB→"+to_t,"dir":"SWAP","amt":sd.get("summary",amt+" BNB swap"),"tx":tx_hash})
+                    TRADE_HISTORY.append({"time":ts,"pair":from_t+"→"+to_t,"dir":"SWAP","amt":sd.get("summary",amt+" swap"),"tx":tx_hash})
                     self.send_json({"executed":True,"tx":tx_hash,"explorer":sd.get("explorer",""),"summary":sd.get("summary","")})
                 else:
                     self.send_json({"executed":False,"reason":sd.get("message","Swap failed")})
             except Exception as e:
                 self.send_json({"executed":False,"error":str(e)})
+        elif p.startswith("/api/manual/alt-swap"):
+            """Legacy alias — routes to unified swap."""
+            qs = urllib.parse.urlparse(self.path).query
+            qp = urllib.parse.parse_qs(qs)
+            to_t = qp.get("to",["CAKE"])[0].upper()
+            amt = qp.get("amount",["1"])[0]
+            self.path = "/api/manual/swap?from=BUSD&to="+to_t+"&amount="+amt
+            self.do_GET()
         elif p == "/api/status":
             self.send_json({"online": True, "cached_endpoints": list(cache.keys()) if cache else ["waiting..."]})
         elif p == "/api/chart/btc":
