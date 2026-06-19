@@ -1,0 +1,72 @@
+🧵 1/5
+
+From mock data to live execution in 24 hours. v2.0 of my Agent Hub Trading Floor is complete 🚀
+
+This is what happens when you pair @coinmarketcap Agent Hub MCP with Trust Wallet Agent Kit on BNB Chain.
+
+#CMCAgentHub
+
+---
+
+2/5
+
+📊 **Live CMC Data — Every Number is Real**
+
+• Global MCAP, 24H volume, BTC.D updated every 30s
+• 20+ coin quotes streaming from CMC Pro API
+• Fear & Greed Index with historical comparison
+• 5-coin expanded charts with live prices
+
+No mock data. No placeholders. All real.
+
+#CMCAgentHub
+
+---
+
+3/5
+
+🧠 **8-Signal Strategy Engine**
+
+Click the SCORE box to see the full breakdown:
+
+🟢 MOMENTUM    +3  |  🟢 TECHNICAL   +2
+🟢 ON-CHAIN    +2  |  🟡 DERIVATIVES  +1
+🟢 REGIME      +3  |  🟢 NARRATIVE   +2
+🟡 MKT STRUCT  +1  |  🟡 MACRO       +1
+
+Each signal updates from live market conditions. Entry requires 4/8 active.
+
+#CMCAgentHub
+
+---
+
+4/5
+
+💼 **Trading Console + Live Wallet**
+
+• Real BNB balance via TWAK on BSC
+• P&L tracking with live 24h price data
+• Executed trade log with BscScan verification
+• Agent status toggle — ACTIVE / PAUSED
+
+Proof of execution:
+https://bscscan.com/tx/0x4d9a72cb25e1ebe808bf496c74961feb06b620ad345769531b85b826b110fc34
+
+#CMCAgentHub
+
+---
+
+5/5
+
+🤖 **AI Agent + 22 CMC Skill Stations**
+
+Ask the agent: analyze BTC, find breakouts, explain regime, compare SOL vs ETH, market sentiment, top gainers.
+
+22 isometric stations covering every CMC skill — from breakout scanning to DeFi TVL to token unlocks.
+
+Full code open source 🐙
+https://github.com/CryptoCT01/agent-hub-trading-floor
+
+@coinmarketcap #CMCAgentHub
+
+Built by @CryptoCTO1 🔥

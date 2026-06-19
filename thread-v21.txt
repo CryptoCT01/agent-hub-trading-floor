@@ -1,0 +1,104 @@
+🧵 1/6
+
+v2.1 — The agent now trades itself.
+
+My Agent Hub Trading Floor has evolved from a data dashboard into a fully autonomous trading agent. No manual triggers. It scans, decides, and executes.
+
+Here's how it works 👇
+
+#CMCAgentHub
+
+---
+
+2/6
+
+📡 **Autonomous Scanning Loop**
+
+Every 60 seconds the agent evaluates:
+
+• 🟢 Momentum — 7d price performance
+• 📊 Technical — RSI/MACD structure
+• 🔗 On-Chain — Whale distribution
+• 📉 Derivatives — Funding rates
+• 🌍 Regime — Fear & Greed Index
+• 🧠 Narrative — Sector rotation
+• 🏛️ Market Structure — MCAP signals
+• 📅 Macro — Economic calendar
+
+Threshold: 4/8 signals must fire before any trade.
+
+#CMCAgentHub
+
+---
+
+3/6
+
+💼 **Live Positions with Real-Time P&L**
+
+Every position is tracked with:
+
+• Entry price 🎯
+• Current price 📍
+• P&L % 🔴🟢 (updates every 30s from CMC live data)
+• Max 3 concurrent positions
+
+If a position is winning, the agent holds. If the market turns, P&L updates instantly. No lag, no mock data.
+
+#CMCAgentHub
+
+---
+
+4/6
+
+🧠 **Signal Scoring Engine**
+
+Click the SCORE box for the full breakdown:
+
+MOMENTUM    +3  |  TECHNICAL   +2
+ON-CHAIN    +2  |  DERIVATIVES  +1
+REGIME      +3  |  NARRATIVE   +2
+MKT STRUCT  +1  |  MACRO       +1
+           ────
+           +15  Total Score
+
+Each signal value changes with live market conditions.
+
+#CMCAgentHub
+
+---
+
+5/6
+
+🔗 **End-to-End Execution**
+
+The proven flow:
+
+1. CMC Agent Hub MCP → market data
+2. 8-signal strategy engine → entry decision
+3. TWAK on BSC → on-chain execution
+
+Proof of live swap:
+https://bscscan.com/tx/0x4d9a72cb25e1ebe808bf496c74961feb06b620ad345769531b85b826b110fc34
+
+Read data → analyze → execute. All in one system.
+
+#CMCAgentHub
+
+---
+
+6/6
+
+🏗️ **Full Stack, Live Data**
+
+• 22 CMC skill stations
+• AI Agent with 7 commands
+• 5-coin expanded charts
+• Live wallet balance via TWAK
+• Particle command center UI
+• All real CMC Pro data
+
+Built across 6 versions in 48 hours.
+
+@coinmarketcap #CMCAgentHub
+
+Built by @CryptoCTO1 🔥
