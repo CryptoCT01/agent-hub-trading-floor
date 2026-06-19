@@ -1,4 +1,4 @@
-# Trading Floor 3.0 — CMC Buildathon Entry
+# Trading Floor 💎 — CMC Buildathon Entry
 
 An **isometric 3D crypto trading floor** built for the CoinMarketCap Agent Hub Creator Competition. Features 10 interactive skill stations, live data visualization, and an AI research agent — all powered by CMC MCP.
 
