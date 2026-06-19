@@ -382,9 +382,12 @@ window._signals = [
   {n:'NARRATIVE', s:'on', v:1, d:'Loading...'},
   {n:'MKT STRUCT', s:'on', v:1, d:'Loading...'},
   {n:'MACRO', s:'on', v:1, d:'Loading...'},
+  {n:'NEWS SENT', s:'on', v:1, d:'Loading...'},
+  {n:'FUNDAMENTAL', s:'on', v:1, d:'Loading...'},
+  {n:'REL STR BTC', s:'on', v:1, d:'Loading...'},
 ];
 document.getElementById('signalDots').innerHTML = window._signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
-document.getElementById('signalCount').textContent = '8/8';
+document.getElementById('signalCount').textContent = '11-SIGNAL';
 // Also trigger initial signal update when BTC data arrives
 const origUpdateBTC = updateBTC;
 updateBTC = function(b){origUpdateBTC(b);if(window._signals)updateSignals(b);};
