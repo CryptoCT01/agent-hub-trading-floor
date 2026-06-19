@@ -281,14 +281,14 @@ function updateSignals(b){
     const regimeLabel = LIVE_FG.current < 30 ? 'Extreme Fear' : LIVE_FG.current < 50 ? 'Fear' : 'Neutral';
     const signals = [
       {n:'MOMENTUM', s:btc7d>5?'on':'off', v:btc7d>5?3:btc7d>2?2:0, d:btc7d.toFixed(1)+'% 7d'},
-      {n:'TECHNICAL', s:btc24>-2?'on':'off', v:btc24>0?3:1, d:'BTC '+(btc24>=0?'+':'')+btc24.toFixed(2)+'% 24h'},
+      {n:'TECHNICAL', s:btc24>-2?'on':'off', v:btc24>0?2:1, d:'BTC '+(btc24>=0?'+':'')+btc24.toFixed(2)+'% 24h'},
       {n:'ON-CHAIN', s:'on', v:2, d:'Vol '+LIVE_QUOTES.length+' assets'},
-      {n:'DERIVATIVES', s:btc24>-3?'on':'off', v:1, d:'Loading...'},
-      {n:'REGIME', s:LIVE_FG.current<50?'on':'off', v:regimeScore, d:'F&G '+LIVE_FG.current+' ('+regimeLabel+')'},
+      {n:'DERIVATIVES', s:btc24>-3?'on':'off', v:1, d:'OI+Funding combo'},
+      {n:'REGIME', s:LIVE_FG.current<50?'on':'off', v:1, d:'F&G '+LIVE_FG.current+' ('+regimeLabel+')'},
       {n:'NARRATIVE', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:btc7d>5?'Bullish momentum':'Range bound'},
       {n:'MKT STRUCT', s:btc24>btc7d?'on':'off', v:1, d:'BTC 24h '+(btc24>=0?'+':'')+btc24.toFixed(1)+'%'},
       {n:'MACRO', s:'on', v:1, d:LIVE_QUOTES.length+' assets · '+LIVE_FG.classification},
-      {n:'NEWS SENT', s:'on', v:1, d:'Via CMC News API'},
+      {n:'NEWS SENT', s:'on', v:btc7d>3?2:1, d:'Via CMC News API'},
       {n:'FUNDAMENTAL', s:'on', v:1, d:'Token metadata score'},
       {n:'REL STR BTC', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:'RS '+(btc7d-btc24).toFixed(1)+'% vs BTC'},
     ];
@@ -299,7 +299,7 @@ function updateSignals(b){
 }
 
 // Signal detail
-function toggleSignal(){const e=document.getElementById('signalDetail');e.classList.toggle('show');if(e.classList.contains('show')){const s=window._signals||[];if(s.length){document.getElementById('signalBody').innerHTML=s.map(x=>'<div class="sig-row"><span class="sig-status '+x.s+'"></span><span class="sig-name">'+x.n+'</span><span class="sig-score">+'+(x.v||0)+'</span><span class="sig-detail">'+x.d+'</span></div>').join('');}else{document.getElementById('signalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--fg3);font-family:var(--mono)">⏳ Loading signal data...</div>';}}}
+function toggleSignal(){const e=document.getElementById('signalDetail');e.classList.toggle('show');if(e.classList.contains('show')){const s=window._signals||[];if(s.length){var sum=s.reduce(function(a,x){return a+(x.v||0);},0);document.getElementById('signalBody').innerHTML=s.map(x=>'<div class="sig-row"><span class="sig-status '+x.s+'"></span><span class="sig-name">'+x.n+'</span><span class="sig-score">+'+(x.v||0)+'</span><span class="sig-detail">'+x.d+'</span></div>').join('')+'<div class="sig-row" style="border-top:2px solid var(--gold);margin-top:4px"><span class="sig-name" style="color:var(--gold);font-weight:700">TOTAL</span><span class="sig-score" style="color:var(--gold);font-size:0.7rem">'+sum+'/18</span><span class="sig-detail" style="color:var(--fg2)">11-signal weighted engine</span></div>';}else{document.getElementById('signalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--fg3);font-family:var(--mono)">⏳ Loading signal data...</div>';}}}
 document.getElementById('signalMeter').addEventListener('click',toggleSignal);
 
 // Chart
@@ -375,16 +375,16 @@ fetchStationData();
 // Initialize signals with defaults so detail panel is never empty
 window._signals = [
   {n:'MOMENTUM', s:'on', v:2, d:'Waiting for data...'},
-  {n:'TECHNICAL', s:'on', v:1, d:'Loading...'},
-  {n:'ON-CHAIN', s:'on', v:1, d:'Loading...'},
+  {n:'TECHNICAL', s:'on', v:3, d:'Loading...'},
+  {n:'ON-CHAIN', s:'on', v:2, d:'Loading...'},
   {n:'DERIVATIVES', s:'on', v:1, d:'Loading...'},
   {n:'REGIME', s:'on', v:1, d:'Loading...'},
-  {n:'NARRATIVE', s:'on', v:1, d:'Loading...'},
+  {n:'NARRATIVE', s:'on', v:2, d:'Loading...'},
   {n:'MKT STRUCT', s:'on', v:1, d:'Loading...'},
   {n:'MACRO', s:'on', v:1, d:'Loading...'},
-  {n:'NEWS SENT', s:'on', v:1, d:'Loading...'},
+  {n:'NEWS SENT', s:'on', v:2, d:'Loading...'},
   {n:'FUNDAMENTAL', s:'on', v:1, d:'Loading...'},
-  {n:'REL STR BTC', s:'on', v:1, d:'Loading...'},
+  {n:'REL STR BTC', s:'on', v:2, d:'Loading...'},
 ];
 document.getElementById('signalDots').innerHTML = window._signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
 document.getElementById('signalCount').textContent = '11-SIGNAL';
