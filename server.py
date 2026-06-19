@@ -110,13 +110,35 @@ def refresh_wallet():
 
             b = mc('wallet_balance', {'chain':'bsc'})
             bnb_w = int(b['result']['content'][0]['text'].split('"available": "')[1].split('"')[0]) / 1e18
-            t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':'0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'})
-            busd_w = int(t['result']['content'][0]['text'].split('"available": "')[1].split('"')[0]) / 1e18
             qc = cache.get("quotes", {}).get("data", {})
             bp = qc.get("BNB", {}).get("quote", {}).get("USD", {}).get("price", 577) if qc else 577
+            # Query all supported token balances
+            token_addrs = {
+                "BUSD":"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+                "USDT":"0x55d398326f99059fF775485246999027B3197955",
+                "USDC":"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                "DAI":"0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
+                "ETH":"0x2170Ed0880ac9A755fd29B2688956BD959F933F8"
+            }
+            wallet_items = [{"sym":"BNB","bal":round(bnb_w,6),"usd":round(bnb_w*bp,2),"canSell":True}]
+            total_usd = round(bnb_w*bp,2)
+            for sym, addr in token_addrs.items():
+                try:
+                    t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
+                    bal_txt = t['result']['content'][0]['text']
+                    bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+                    price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 1) if qc else 1
+                    usd_v = round(bal * price, 2)
+                    if bal > 0:
+                        wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
+                        total_usd += usd_v
+                except:
+                    pass
+            busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
             with cache_lock:
-                cache["wallet"] = {"bnb": round(bnb_w,4), "busd": round(busd_w,4), "usd": round(bnb_w*bp+busd_w,2), "bnb_price": round(bp,2), "closedTrades": TRADE_COUNT, "initUsd": 49.00}
-            print("  💰 WALLET {:.4f} BNB | {:.4f} BUSD | ${:.2f}".format(bnb_w, busd_w, bnb_w*bp+busd_w))
+                cache["wallet"] = {"bnb": round(bnb_w,4), "busd": round(busd_w,4), "usd": round(total_usd,2), "bnb_price": round(bp,2), "closedTrades": TRADE_COUNT, "initUsd": 49.00}
+                cache["wallet_details"] = {"total": round(total_usd,2), "items": wallet_items}
+            print("  💰 WALLET {:.4f} BNB | ${:.2f} total".format(bnb_w, total_usd))
         except:
             pass
         time.sleep(60)
@@ -159,6 +181,7 @@ def scan_strategy():
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        global TRADE_COUNT, TRADE_HISTORY
         p = urllib.parse.urlparse(self.path).path
         if p == "/api/global":
             self.send_json(cache.get("global", {"error": "loading"}))
@@ -193,7 +216,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     tx_hash = sd.get("hash","")
                     success = sd.get("success",False) or bool(tx_hash)
                     if success:
-                        global TRADE_COUNT, TRADE_HISTORY
                         TRADE_COUNT += 1
                         import datetime
                         ts = datetime.datetime.utcnow().strftime("%d %b %H:%M")
@@ -201,6 +223,43 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self.send_json({"executed":True,"candidate":pick["s"],"signals":scan["signals"],"tx":tx_hash,"explorer":sd.get("explorer",""),"toToken":to_token,"summary":sd.get("summary","")})
                     else:
                         self.send_json({"executed":False,"reason":sd.get("message","Swap failed"),"candidate":pick["s"],"signals":scan["signals"]})
+            except Exception as e:
+                self.send_json({"executed":False,"error":str(e)})
+        elif p.startswith("/api/manual/swap"):
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                from_t = qp.get("from",["BNB"])[0].upper()
+                to_t = qp.get("to",["BUSD"])[0].upper()
+                amt = qp.get("amount",["0.001"])[0]
+                native_tokens = ["BNB","BUSD","USDT","USDC","DAI","ETH"]
+                if from_t not in native_tokens:
+                    self.send_json({"executed":False,"reason":from_t+" not supported. Use: "+", ".join(native_tokens)}); return
+                if to_t not in native_tokens:
+                    self.send_json({"executed":False,"reason":to_t+" not supported. Use: "+", ".join(native_tokens)}); return
+                if from_t == to_t:
+                    self.send_json({"executed":False,"reason":"Cannot swap "+from_t+" to itself"}); return
+                import subprocess as sp
+                def mc(m,a):
+                    pr = sp.Popen(['/Users/cryptot/.hermes/node/bin/twak','serve'],stdin=sp.PIPE,stdout=sp.PIPE,stderr=sp.PIPE,
+                        env={'TWAK_ACCESS_ID':TWAK_ACCESS_ID or '','TWAK_HMAC_SECRET':TWAK_HMAC_SECRET or '','PATH':'/Users/cryptot/.hermes/node/bin'})
+                    rq = json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':m,'arguments':a}})
+                    o,_ = pr.communicate((rq+'\n').encode(), timeout=20)
+                    return json.loads(o.decode())
+                result = mc("swap",{"fromToken":from_t,"toToken":to_t,"amount":amt,"fromChain":"bsc","toChain":"bsc","slippage":"1"})
+                rt = result.get("result",{}).get("content",[{}])[0].get("text","{}")
+                sd = json.loads(rt) if isinstance(rt,str) else rt
+                tx_hash = sd.get("hash","")
+                success = sd.get("success",False) or bool(tx_hash)
+                if success:
+                    TRADE_COUNT += 1
+                    import datetime
+                    ts = datetime.datetime.utcnow().strftime("%d %b %H:%M")
+                    label = "SWAP"
+                    TRADE_HISTORY.append({"time":ts,"pair":from_t+"→"+to_t,"dir":label,"amt":sd.get("summary",amt+" "+from_t+" swap"),"tx":tx_hash})
+                    self.send_json({"executed":True,"tx":tx_hash,"explorer":sd.get("explorer",""),"summary":sd.get("summary","")})
+                else:
+                    self.send_json({"executed":False,"reason":sd.get("message","Swap failed")})
             except Exception as e:
                 self.send_json({"executed":False,"error":str(e)})
         elif p == "/api/status":
@@ -213,6 +272,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/wallet":
             w = cache.get("wallet", {"bnb": 0, "usd": 0, "bnb_price": 577, "closedTrades": TRADE_COUNT, "initUsd": 49.00})
             self.send_json(w)
+        elif p == "/api/wallet/details":
+            wd = cache.get("wallet_details", {"total":0,"items":[]})
+            self.send_json(wd)
         elif p == "/api/trades":
             self.send_json(TRADE_HISTORY)
         else:

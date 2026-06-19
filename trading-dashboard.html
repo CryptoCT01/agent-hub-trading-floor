@@ -122,6 +122,37 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .tip{position:fixed;z-index:150;pointer-events:none;font-family:var(--mono);font-size:0.65rem;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;max-width:240px;opacity:0;transition:opacity .15s}.tip.show{opacity:1}
 .tip-t{font-weight:700;color:var(--gold);margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--border)}.tip-s{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:0.6rem}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.trade-box,.wallet-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 8px 4px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:999px;font-family:var(--mono);cursor:pointer;transition:.2s}
+.trade-box:hover,.wallet-pill:hover{border-color:var(--gold)}
+.trade-box input{width:42px;padding:3px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-family:var(--mono);font-size:0.6rem;outline:none;text-align:center}
+.trade-box input:focus{border-color:var(--gold)}
+.trade-box select{width:50px;padding:3px 2px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--gold);font-family:var(--mono);font-size:0.6rem;outline:none;cursor:pointer}
+.trade-arrow{color:var(--fg3);font-size:0.55rem;pointer-events:none}
+.trade-usd{font-family:var(--mono);font-size:0.5rem;color:var(--fg3);min-width:38px;text-align:center}
+.trade-expand{background:none;border:none;color:var(--fg3);font-size:0.45rem;cursor:pointer;padding:2px 4px;transition:.2s}.trade-expand:hover{color:var(--gold)}
+.trade-btn.swap{color:#05080c;background:linear-gradient(135deg,var(--gold),#b89c3a);border:none;border-radius:999px;font-family:var(--mono);font-size:0.6rem;font-weight:600;cursor:pointer;padding:4px 14px}
+.wallet-pill{padding:4px 14px 4px 12px;min-height:28px;font-size:0.6rem}
+.wallet-pill .wl-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--green)}
+.wallet-pill .wl-bal{color:var(--fg);font-weight:700;font-size:0.65rem}
+.wallet-pill .wl-usd{color:var(--fg2);font-weight:500}
+.wallet-pill .wl-expand{color:var(--fg3);font-size:0.45rem;margin-left:2px}
+.wallet-modal{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);z-index:250;width:340px;max-height:70vh;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px;display:none;overflow-y:auto;font-family:var(--mono)}
+.wallet-modal.show{display:block}
+.wm-header{text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.wm-total{font-size:1.1rem;font-weight:700;color:var(--gold)}
+.wm-label{font-size:0.5rem;text-transform:uppercase;letter-spacing:.1em;color:var(--fg3);margin-top:2px}
+.wm-item{display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--border);font-size:0.6rem}.wm-item:last-child{border:none}
+.wm-sym{font-weight:700;color:var(--gold);min-width:36px}
+.wm-bal{color:var(--fg);flex:1;text-align:center}
+.wm-usd{color:var(--fg2);min-width:50px;text-align:right;font-weight:600}
+.wm-sell{padding:2px 10px;border:1px solid rgba(255,71,87,0.3);border-radius:999px;background:transparent;color:#ff4757;font-family:var(--mono);font-size:0.5rem;cursor:pointer;margin-left:6px}.wm-sell:hover{background:rgba(255,71,87,0.12)}
+.trade-panel{position:fixed;bottom:52px;left:20px;z-index:250;width:280px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px;display:none;font-family:var(--mono)}
+.trade-panel.show{display:block}
+.tp-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:0.6rem}
+.tp-label{color:var(--fg3)}.tp-val{color:var(--fg);font-weight:600}
+.tp-val.gold{color:var(--gold)}.tp-val.green{color:var(--green)}
+.tp-input{width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-family:var(--mono);font-size:0.85rem;text-align:center;outline:none;margin-bottom:8px}
+.tp-input:focus{border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -132,7 +163,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="sparkline-wrap" id="sparkWrap"><span class="sparkline-sym">BTC</span><span class="sparkline-price" id="spPrice">⟳</span><svg viewBox="0 0 60 24"><polyline id="sparkLine" fill="none" stroke="var(--gold)" stroke-width="1.5" points="0,22 8,18 17,20 25,12 34,10 42,6 50,4"/></svg><span class="sparkline-pct" id="spPct">⟳</span></div>
 <div class="stat" style="flex-direction:row;border-color:var(--green);background:rgba(0,230,118,0.08)"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span><span style="font-family:var(--mono);font-size:0.55rem;color:var(--green)" id="uptime">LIVE</span><span style="font-family:var(--mono);font-size:0.5rem;color:var(--fg3);margin-left:2px" id="liveTime"></span></div>
 </div></div>
-<div class="hud-bottom"><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option selected>BNB</option><option>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="0.001" oninput="u()"><span class="trade-arrow">→</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$0.57</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
 <div class="floor" id="floor"></div>
 <div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button></div>
 <div class="console" id="console"><div class="chart-h"><h3><span style="color:var(--gold)">TRADING CONSOLE</span></h3><button class="chart-close" onclick="toggleConsole()">×</button></div><div class="console-body"><div class="console-summary" id="consoleSummary"></div>
@@ -355,6 +386,68 @@ document.getElementById('signalCount').textContent = '8/8';
 const origUpdateBTC = updateBTC;
 updateBTC = function(b){origUpdateBTC(b);if(window._signals)updateSignals(b);};
 
+
+// Manual trade
+function u(){var a=parseFloat(document.getElementById("tradeAmt").value)||0;
+var f=document.getElementById("tradeFrom").value;
+var q=LIVE_QUOTES.find(function(x){return x.s===f;});
+var e=document.getElementById("tradeUsd");if(e)e.textContent="~$"+(a*(q?q.p:575)).toFixed(2);}
+async function m(){var a=document.getElementById("tradeAmt").value||"0.001";
+var f=document.getElementById("tradeFrom").value;
+var t=document.getElementById("tradeTo").value;
+if(f===t){console.log("same asset");return;}
+var b=document.querySelector(".trade-btn.swap");
+if(b){b.textContent="...";b.style.opacity="0.6";}
+try{var r=await fetch("/api/manual/swap?from="+f+"&to="+t+"&amount="+a);
+var d=await r.json();
+if(d&&d.executed){
+  if(b){b.textContent=d.summary.split("->").pop().trim().slice(0,18);b.style.opacity="1";}
+  setTimeout(function(){if(b)b.textContent="SWAP";},2500);
+  fetchWallet();renderTradeLog();u();
+}else{if(b){b.textContent="SWAP";b.style.opacity="1";}}
+}catch(e){console.log("swap err",e);if(b){b.textContent="SWAP";b.style.opacity="1";}}}
+function x(){var p=document.getElementById("tp");
+if(!p){p=document.createElement("div");p.id="tp";p.className="trade-panel";
+p.innerHTML="<div style=\"text-align:center;margin-bottom:10px;font-size:0.65rem;font-weight:600;color:var(--gold)\">MANUAL TRADING</div><div class=\"tp-row\"><span class=\"tp-label\">FROM</span><span class=\"tp-val gold\" id=\"_0\">BNB</span><span class=\"tp-label\">TO</span><span class=\"tp-val gold\" id=\"_1\">BUSD</span></div><div class=\"tp-row\"><span class=\"tp-label\">AMOUNT</span><span class=\"tp-val\" id=\"_2\">0.001</span></div><div class=\"tp-row\"><span class=\"tp-label\">USD</span><span class=\"tp-val green\" id=\"_3\">$0.57</span></div><input class=\"tp-input\" id=\"_i\" value=\"0.001\" oninput=\"document.getElementById(\'tradeAmt\').value=this.value;u();v();\"><button class=\"trade-btn swap\" style=\"width:100%;margin-top:8px;padding:8px\" onclick=\"m();v()\">SWAP</button>";
+document.body.appendChild(p);}
+p.classList.toggle("show");if(p.classList.contains("show"))v();}
+function v(){var p=document.getElementById("tp");
+if(!p||!p.classList.contains("show"))return;
+document.getElementById("_0").textContent=document.getElementById("tradeFrom").value;
+document.getElementById("_1").textContent=document.getElementById("tradeTo").value;
+document.getElementById("_2").textContent=document.getElementById("tradeAmt").value;
+var e=document.getElementById("tradeUsd");if(e)document.getElementById("_3").textContent=e.textContent;}
+// Wallet
+function w(){var p=document.getElementById("wm");
+if(!p){p=document.createElement("div");p.id="wm";p.className="wallet-modal";
+p.innerHTML="<div class=\"wm-header\"><div class=\"wm-total\" id=\"_t\">$0</div><div class=\"wm-label\">TOTAL</div></div><div id=\"_l\"></div>";
+p.onclick=function(e){if(e.target===p)p.classList.remove("show");};
+document.body.appendChild(p);}p.classList.toggle("show");
+if(p.classList.contains("show"))window._r();}
+window._r=async function(){var p=document.getElementById("wm");
+if(!p||!p.classList.contains("show"))return;
+try{var d=await(await fetch("/api/wallet/details")).json();
+document.getElementById("_t").textContent="$"+(d.total||0).toFixed(2);
+var c=document.getElementById("_l");c.innerHTML="";
+for(var i=0;i<d.items.length;i++){(function(itm){
+var row=document.createElement("div");row.className="wm-item";
+var a=document.createElement("span");a.className="wm-sym";a.textContent=itm.sym;row.appendChild(a);
+var b=document.createElement("span");b.className="wm-bal";b.textContent=itm.bal.toFixed(4);row.appendChild(b);
+var v=document.createElement("span");v.className="wm-usd";v.textContent="$"+itm.usd.toFixed(2);row.appendChild(v);
+if(itm.canSell){var btn=document.createElement("button");btn.className="wm-sell";btn.textContent="SELL";
+(function(s,b){btn.addEventListener("click",function(){var a=s==="BNB"?Math.max(0,b-0.002):b*0.9;
+if(a<=0)return;btn.textContent="...";fetch("/api/manual/swap?from="+s+"&to=BNB&amount="+a.toFixed(6)).then(function(r){return r.json();}).then(function(d){if(d.executed){btn.textContent="OK "+d.summary.split("->").pop().trim().slice(0,15);fetchWallet();renderTradeLog();setTimeout(function(){var p2=document.getElementById("wm");if(p2)p2.classList.remove("show");},2000);}}).catch(function(e){});});})(itm.sym,itm.bal);
+row.appendChild(btn);}
+c.appendChild(row);})(d.items[i]);}}catch(e){}};
+
+// Wallet pill refresh
+async function pillRefresh(){try{var d=await(await fetch("/api/wallet")).json();
+if(d.bnb){document.getElementById("pBal").textContent=d.bnb.toFixed(3)+" BNB";
+document.getElementById("pUsd").textContent="$"+d.usd.toFixed(2);}}catch(e){}}
+setInterval(pillRefresh,60000);
+// Also ensure USD updates on data load
+var _orig=window.fetchQuotes;if(_orig){window.fetchQuotes=function(){_orig();setTimeout(u,2000);};}
+
 // Station panel
 function selectStation(s){
   document.querySelectorAll('.iso-tile').forEach(t=>t.classList.remove('selected'));
@@ -488,6 +581,8 @@ agent.input.addEventListener('keydown',e=>{if(e.key==='Enter')agent.send.click()
 // Init
 fetchGlobal();fetchQuotes();setInterval(fetchGlobal,30000);setInterval(fetchQuotes,30000);setInterval(ticker,10000);
 setTimeout(()=>document.getElementById('load').classList.add('hidden'),1000);
+document.getElementById("swapBtn").addEventListener("click",m);
+
 </script>
 </body>
 </html>
