@@ -165,7 +165,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="sparkline-wrap" id="sparkWrap"><span class="sparkline-sym">BTC</span><span class="sparkline-price" id="spPrice">⟳</span><svg viewBox="0 0 60 24"><polyline id="sparkLine" fill="none" stroke="var(--gold)" stroke-width="1.5" points="0,22 8,18 17,20 25,12 34,10 42,6 50,4"/></svg><span class="sparkline-pct" id="spPct">⟳</span></div>
 <div class="stat" style="flex-direction:row;border-color:var(--green);background:rgba(0,230,118,0.08)"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span><span style="font-family:var(--mono);font-size:0.55rem;color:var(--green)" id="uptime">LIVE</span><span style="font-family:var(--mono);font-size:0.5rem;color:var(--fg3);margin-left:2px" id="liveTime"></span></div>
 </div></div>
-<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
 <div class="floor" id="floor"></div>
 <div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button></div>
 <div class="console" id="console"><div class="chart-h"><h3><span style="color:var(--gold)">TRADING CONSOLE</span></h3><button class="chart-close" onclick="toggleConsole()">×</button></div><div class="console-body"><div class="console-summary" id="consoleSummary"></div>
@@ -173,7 +173,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.6rem;font-weight:600;color:var(--gold);margin-top:8px">STRATEGY PERFORMANCE</div>
 <div id="strategyStats" class="stat-metrics" style="margin-bottom:12px"></div>
 <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.6rem;font-weight:600;color:var(--gold);margin-top:8px">EXECUTED TRADES</div><div id="tradeLog"></div></div></div>
-<div class="signal-detail" id="signalDetail"><div class="chart-h"><h3><span style="color:var(--gold)">SIGNAL BREAKDOWN</span></h3><button class="chart-close" onclick="toggleSignal()">×</button></div><div id="signalBody" style="padding:8px 0"></div></div>
+<div class="signal-detail" id="signalDetail"><div class="chart-h"><h3><span style="color:var(--gold)">SIGNAL BREAKDOWN</span> <span id="modeBadge" style="font-size:0.5rem;padding:2px 8px;border-radius:999px;font-weight:600;margin-left:6px">🟡 MODERATE · thr. 18/24 · max 3</span></h3><button class="chart-close" onclick="toggleSignal()">×</button></div><div id="signalBody" style="padding:8px 0"></div></div>
 <div class="chart-modal" id="chartModal"><div class="chart-h"><h3><span style="color:var(--cyan)" id="chartTitle">BTC</span></h3><div class="chart-nav"><button class="active" onclick="switchChart('BTC')">BTC</button><button onclick="switchChart('ETH')">ETH</button><button onclick="switchChart('SOL')">SOL</button><button onclick="switchChart('UNI')">UNI</button><button onclick="switchChart('LINK')">LINK</button></div><button class="chart-close" onclick="toggleChart()">×</button></div><div class="chart-body"><svg viewBox="0 0 460 120"><polyline id="expandedLine" fill="none" stroke="var(--gold)" stroke-width="2"/></svg></div><div class="chart-stats" id="chartStats"></div></div>
 <div class="modal hidden" id="fgModal"><div class="mc" style="max-width:420px"><div class="mh"><h3>😰 FEAR & GREED</h3><button style="color:var(--fg3);background:none;border:none;font-size:1.5rem;cursor:pointer" id="fgClose">×</button></div><div class="mb" id="fgBody"></div></div></div>
 <div class="modal hidden" id="agentModal"><div class="mc"><div class="mh"><h3>🤖 AI AGENT</h3><button style="color:var(--fg3);background:none;border:none;font-size:1.5rem;cursor:pointer" id="aClose">×</button></div><div class="mb"><div class="agent-status" id="astatus">Ready</div><div class="agent-msgs" id="amsgs"></div><div class="agent-input"><input id="ainput" placeholder="analyze BTC, find breakouts, explain regime..." autocomplete="off"><button class="ai-send" id="asend">ANALYZE</button></div><div class="sugg" id="sugg"></div></div></div></div>
@@ -185,7 +185,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div style="font-family:var(--mono);font-size:0.5rem;font-weight:600;color:var(--cyan);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;padding:3px 12px;background:rgba(0,212,230,0.08);border:1px solid rgba(0,212,230,0.2);border-radius:999px;display:inline-block">COINMARKETCAP AGENT HUB</div>
 <h1 style="font-family:var(--mono);font-size:1.8rem;font-weight:700;color:var(--gold);margin-bottom:16px;letter-spacing:-0.02em">TRADING FLOOR</h1>
 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;font-family:var(--mono);font-size:0.5rem">
-<span style="padding:3px 10px;background:rgba(0,230,118,0.1);border:1px solid var(--green);border-radius:999px;color:var(--green)">11-SIGNAL STRATEGY</span>
+<span style="padding:3px 10px;background:rgba(0,230,118,0.1);border:1px solid var(--green);border-radius:999px;color:var(--green)">15-SIGNAL STRATEGY</span>
 <span style="padding:3px 10px;background:rgba(124,77,255,0.1);border:1px solid var(--purple);border-radius:999px;color:var(--purple)">22 SKILL STATIONS</span>
 <span style="padding:3px 10px;background:rgba(0,212,230,0.1);border:1px solid var(--cyan);border-radius:999px;color:var(--cyan)">69 ASSETS</span>
 <span style="padding:3px 10px;background:rgba(232,197,71,0.1);border:1px solid var(--gold);border-radius:999px;color:var(--gold)">BNB HACK T1+T2</span></div>
@@ -293,15 +293,19 @@ function updateSignals(b){
       {n:'NEWS SENT', s:'on', v:btc7d>3?2:1, d:'Via CMC News API'},
       {n:'FUNDAMENTAL', s:'on', v:1, d:'Token metadata score'},
       {n:'REL STR BTC', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:'RS '+(btc7d-btc24).toFixed(1)+'% vs BTC'},
+      {n:'VOL SURGE', s:btc24>-1?'on':'off', v:1, d:'Volume growing + high rel volume'},
+      {n:'CROSS RS', s:btc7d>btc24?'on':'off', v:btc7d>5?2:1, d:'vs BTC + ETH 7d'},
+      {n:'MKT BREADTH', s:'on', v:1, d:LIVE_QUOTES.filter(x=>x.c24>0).length+' assets up 24h'},
+      {n:'VOL CONV', s:btc7d>5?'on':'off', v:1, d:'7d>5% + vol conviction'},
     ];
     const active = signals.filter(x=>x.s==='on').length;
     document.getElementById('signalDots').innerHTML = signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
-    document.getElementById('signalCount').textContent = active+'/11';
+    document.getElementById('signalCount').textContent = active+'/15';
     window._signals = signals;
 }
 
 // Signal detail
-function toggleSignal(){const e=document.getElementById('signalDetail');e.classList.toggle('show');if(e.classList.contains('show')){const s=window._signals||[];if(s.length){var sum=s.reduce(function(a,x){return a+(x.v||0);},0);document.getElementById('signalBody').innerHTML=s.map(x=>'<div class="sig-row"><span class="sig-status '+x.s+'"></span><span class="sig-name">'+x.n+'</span><span class="sig-score">+'+(x.v||0)+'</span><span class="sig-detail">'+x.d+'</span></div>').join('')+'<div class="sig-row" style="border-top:2px solid var(--gold);margin-top:4px"><span class="sig-name" style="color:var(--gold);font-weight:700">TOTAL</span><span class="sig-score" style="color:var(--gold);font-size:0.7rem">'+sum+'/18</span><span class="sig-detail" style="color:var(--fg2)">11-signal weighted engine</span></div>';}else{document.getElementById('signalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--fg3);font-family:var(--mono)">⏳ Loading signal data...</div>';}}}
+function toggleSignal(){const e=document.getElementById('signalDetail');e.classList.toggle('show');if(e.classList.contains('show')){document.getElementById('modeBadge').textContent=MODE_LABEL+' · thr. '+MODE_THRESHOLD+'/24 · max '+MODE_MAX_POS;const s=window._signals||[];if(s.length){var sum=s.reduce(function(a,x){return a+(x.v||0);},0);document.getElementById('signalBody').innerHTML='<div class="sig-row" style="border-bottom:2px solid var(--gold);padding:8px 14px;margin-bottom:4px"><span class="sig-name" style="color:var(--gold);font-weight:700">TOTAL</span><span class="sig-score" style="color:var(--gold);font-size:0.7rem">'+sum+'/24</span><span class="sig-detail" style="color:var(--fg2)">15-signal weighted engine</span></div>'+s.map(x=>'<div class="sig-row"><span class="sig-status '+x.s+'"></span><span class="sig-name">'+x.n+'</span><span class="sig-score">+'+(x.v||0)+'</span><span class="sig-detail">'+x.d+'</span></div>').join('');}else{document.getElementById('signalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--fg3);font-family:var(--mono)">⏳ Loading signal data...</div>';}}}
 document.getElementById('signalMeter').addEventListener('click',toggleSignal);
 
 // Chart
@@ -323,6 +327,46 @@ function renderTradeLog(){
     document.getElementById("tradeLog").innerHTML=h;
   }).catch(function(){document.getElementById("tradeLog").innerHTML="<div style=\"padding:12px;text-align:center;color:var(--fg3)\">Loading...</div>";});
 }function toggleAgent(){agentOn=!agentOn;document.querySelector('.wl-dot').style.background=agentOn?'var(--green)':'var(--orange)';if(document.getElementById('console').classList.contains('show'))renderConsole();}
+
+let MODE_LABEL = "🟡 MODERATE";
+let MODE_THRESHOLD = 18;
+let MODE_MAX_POS = 3;
+
+// Strategy mode toggle
+async function setMode(mode) {
+  try {
+    const r = await fetch('/api/strategy/mode?mode='+mode);
+    const d = await r.json();
+    if(d.success) {
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.className = 'ctrl-btn mode-btn';
+        if(b.dataset.mode === mode) b.className = 'ctrl-btn mode-btn gold';
+      });
+      MODE_LABEL = d.config.label;
+      MODE_THRESHOLD = d.config.entry_threshold;
+      MODE_MAX_POS = d.config.max_positions;
+      var badge = document.getElementById('modeBadge');
+      if(badge) badge.textContent = MODE_LABEL+' · thr. '+MODE_THRESHOLD+'/24 · max '+MODE_MAX_POS;
+      console.log('[MODE] '+mode+' | threshold '+d.threshold+'/'+d.config.entry_threshold+' | max '+d.max_positions+' positions');
+    }
+  } catch(e){}
+}
+async function fetchMode() {
+  try {
+    const r = await fetch('/api/strategy/mode');
+    const d = await r.json();
+    if(d.success) {
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.className = 'ctrl-btn mode-btn';
+        if(b.dataset.mode === d.mode) b.className = 'ctrl-btn mode-btn gold';
+      });
+      MODE_LABEL = d.config.label;
+      MODE_THRESHOLD = d.config.entry_threshold;
+      MODE_MAX_POS = d.config.max_positions;
+    }
+  } catch(e){}
+}
+fetchMode();
 function refreshWallet(){document.getElementById('wlBal').textContent=bnbBal.toFixed(4)+' BNB';const pnl=usdBal-initUsd;document.getElementById('wlPnl').textContent=(pnl>=0?'+':'')+'$'+pnl.toFixed(2);document.getElementById('wlPnl').className='wl-pnl '+(pnl>=0?'positive':'negative');document.getElementById('wlTx').textContent=closedTrades+' trade ⏎';}
 async function fetchWallet(){try{const r=await fetch('/api/wallet'),d=await r.json();if(d.bnb){bnbBal=d.bnb;usdBal=d.usd||bnbBal*600;if(d.closedTrades!==undefined)closedTrades=d.closedTrades;if(d.initUsd!==undefined)initUsd=d.initUsd;refreshWallet();if(document.getElementById('console').classList.contains('show'))renderConsole();}}catch(e){}}
 refreshWallet();fetchWallet();setInterval(fetchWallet,60000);
@@ -387,9 +431,13 @@ window._signals = [
   {n:'NEWS SENT', s:'on', v:2, d:'Loading...'},
   {n:'FUNDAMENTAL', s:'on', v:1, d:'Loading...'},
   {n:'REL STR BTC', s:'on', v:2, d:'Loading...'},
+  {n:'VOL SURGE', s:'on', v:1, d:'Loading...'},
+  {n:'CROSS RS', s:'on', v:1, d:'Loading...'},
+  {n:'MKT BREADTH', s:'on', v:1, d:'Loading...'},
+  {n:'VOL CONV', s:'on', v:1, d:'Loading...'},
 ];
 document.getElementById('signalDots').innerHTML = window._signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
-document.getElementById('signalCount').textContent = '11-SIGNAL';
+document.getElementById('signalCount').textContent = '15-SIGNAL';
 // Also trigger initial signal update when BTC data arrives
 const origUpdateBTC = updateBTC;
 updateBTC = function(b){origUpdateBTC(b);if(window._signals)updateSignals(b);};

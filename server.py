@@ -133,6 +133,30 @@ def score_to_busd(score, max_score, cat):
         base = 1.50
     return min(base, params["max_busd"])
 
+# ===== STRATEGY MODE =====
+STRATEGY_MODE = "moderate"  # risky, moderate, ultra_safe
+MODE_CONFIG = {
+    "risky":     {"entry_threshold": 16, "max_positions": 4, "label": "🔴 RISKY", "desc": "Aggressive — lower threshold"},
+    "moderate":  {"entry_threshold": 18, "max_positions": 3, "label": "🟡 MODERATE", "desc": "Balanced risk-reward"},
+    "ultra_safe":{"entry_threshold": 21, "max_positions": 2, "label": "🟢 ULTRA SAFE", "desc": "Conservative — high threshold"},
+}
+
+def get_strategy_mode():
+    return STRATEGY_MODE
+
+def set_strategy_mode(mode):
+    global STRATEGY_MODE
+    if mode in MODE_CONFIG:
+        STRATEGY_MODE = mode
+        return True
+    return False
+
+def get_entry_threshold():
+    return MODE_CONFIG[STRATEGY_MODE]["entry_threshold"]
+
+def get_max_positions():
+    return MODE_CONFIG[STRATEGY_MODE]["max_positions"]
+
 # ===== POSITION TRACKING =====
 POSITIONS = []  # [{token,address,entry_price,amt_tokens,amt_busd,entry_time,cat,tier1,tier2,tier3,stop_loss,highest}]
 POSITIONS_LOCK = threading.Lock()
@@ -140,8 +164,9 @@ MAX_POSITIONS = 4
 
 def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
     with POSITIONS_LOCK:
-        if len(POSITIONS) >= MAX_POSITIONS:
-            return False, f"Max {MAX_POSITIONS} positions reached"
+        max_pos = get_max_positions()
+        if len(POSITIONS) >= max_pos:
+            return False, f"Max {max_pos} positions reached ({STRATEGY_MODE} mode)"
         cat_params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
         stop_pct = cat_params["stop"]
         now = time.time()
@@ -206,6 +231,16 @@ def check_token_safe(symbol, address):
         return True, f"Safe (risk={risk}, audit={data.get('hasAudit',False)}, honeypot={data.get('isHoneypot',False)})"
     except Exception as e:
         return False, f"Risk check error: {e}"
+
+# Load env vars from temp file (for background process compatibility)
+_env_file = "/tmp/trading_env.json"
+if os.path.exists(_env_file):
+    try:
+        import json as _json
+        with open(_env_file) as _f:
+            for _k, _v in _json.load(_f).items():
+                if _v: os.environ.setdefault(_k, _v)
+    except: pass
 
 CMC_API_KEY = os.environ.get("CMC_API_KEY", "set-this-via-env-var")
 TWAK_ACCESS_ID = os.environ.get("TWAK_ACCESS_ID", "set-this-via-env-var")
@@ -351,17 +386,24 @@ def scan_strategy():
     if not isinstance(qd, dict) or "data" not in qd:
         return {"candidate": None, "reason": "No data", "signals": 0}
     
-    max_score = 18  # max weighted points (11 signals)
+    max_score = 24  # max weighted points (15 signals total)
     coins = []
     btc_price = None
     btc_24h = 0
     btc_7d = 0
-    # Get BTC price for relative strength
+    eth_price = None
+    eth_24h = 0
+    eth_7d = 0
+    # Get BTC and ETH prices for relative strength
     for sym, info in qd["data"].items():
         if sym == "BTC":
             btc_price = info.get("quote", {}).get("USD", {}).get("price", 0)
             btc_24h = info.get("quote", {}).get("USD", {}).get("percent_change_24h", 0)
             btc_7d = info.get("quote", {}).get("USD", {}).get("percent_change_7d", 0)
+        if sym == "ETH":
+            eth_price = info.get("quote", {}).get("USD", {}).get("price", 0)
+            eth_24h = info.get("quote", {}).get("USD", {}).get("percent_change_24h", 0)
+            eth_7d = info.get("quote", {}).get("USD", {}).get("percent_change_7d", 0)
     
     for sym, info in qd["data"].items():
         q = info.get("quote", {}).get("USD", {})
@@ -371,6 +413,7 @@ def scan_strategy():
             "c24": q.get("percent_change_24h", 0),
             "c7": q.get("percent_change_7d", 0),
             "v": q.get("volume_24h", 0),
+            "vchg": q.get("volume_change_24h", 0),
             "mc": q.get("market_cap", 0)})
     
     scored = []
@@ -480,6 +523,43 @@ def scan_strategy():
         if c["c7"] > c["c24"] and c["c24"] > 0: acc += 1
         score += min(acc, 1)
         if acc >= 1: details.append("ACC+1")
+
+        # Signal 12: Volume surge (weight 2) — real conviction from volume growth
+        vsurge = 0
+        v24 = c.get("volume_24h", 0)
+        vchg = c.get("vchg", 0)
+        mc = c.get("mc", 0)
+        if v24 > 0:
+            vol_ratio = (v24 / mc) if mc > 0 else 0
+            if vol_ratio > 0.1: vsurge += 1  # High relative volume
+            if vchg > 0: vsurge += 1  # Volume growing
+        score += min(vsurge, 2)
+        if vsurge >= 1: details.append("VOLS+"+str(int(vsurge)))
+
+        # Signal 13: Cross-asset relative strength vs BTC + ETH (weight 2)
+        xrs = 0
+        if btc_price and eth_price:
+            rel_btc = c["c7"] - btc_7d
+            rel_eth = c["c7"] - eth_7d
+            if rel_btc > 3 and rel_eth > 3: xrs += 2
+            elif rel_btc > 2 or rel_eth > 2: xrs += 1
+        score += min(xrs, 2)
+        if xrs >= 1: details.append("XRS+"+str(int(xrs)))
+
+        # Signal 14: Market breadth (weight 1) — more than half of tracked tokens positive
+        mkt_breadth = 0
+        pos_count = sum(1 for cc in coins if cc.get("c24", 0) > 0)
+        total_count = len(coins) if coins else 1
+        if total_count > 0 and (pos_count / total_count) > 0.55: mkt_breadth += 1
+        score += min(mkt_breadth, 1)
+        if mkt_breadth >= 1: details.append("BRD+1")
+
+        # Signal 15: Volatility conviction (weight 1) — real movement backed by volume
+        vol_conv = 0
+        if abs(c["c7"]) > 5: vol_conv += 0.5
+        if c["mc"] > 0 and (c["v"] / c["mc"]) > 0.05: vol_conv += 0.5
+        score += min(int(vol_conv), 1)
+        if vol_conv >= 1: details.append("VCV+"+str(int(vol_conv)))
         
         scored.append({"s": sym, "score": round(score, 1), "p": c["p"],
             "c24": c["c24"], "c7": c["c7"], "det": details, "max": max_score})
@@ -493,7 +573,7 @@ def scan_strategy():
         "max_score": max_score,
         "total": len(coins),
         "scored": len(scored),
-        "entry_threshold": 14,
+        "entry_threshold": get_entry_threshold(),
     }
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -506,18 +586,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_json(cache.get("quotes", {"error": "loading"}))
         elif p == "/api/strategy/scan":
             self.send_json(scan_strategy())
+        elif p == "/api/strategy/mode":
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                new_mode = qp.get("mode", [None])[0]
+                if new_mode:
+                    if new_mode in MODE_CONFIG:
+                        set_strategy_mode(new_mode)
+                        self.send_json({"success": True, "mode": new_mode, "threshold": get_entry_threshold(), "max_positions": get_max_positions(), "config": MODE_CONFIG[new_mode]})
+                    else:
+                        self.send_json({"success": False, "error": f"Invalid mode. Choose from: {', '.join(MODE_CONFIG.keys())}"})
+                else:
+                    self.send_json({"success": True, "mode": STRATEGY_MODE, "threshold": get_entry_threshold(), "max_positions": get_max_positions(), "config": MODE_CONFIG[STRATEGY_MODE], "available": list(MODE_CONFIG.keys())})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)})
         elif p == "/api/strategy/execute":
             try:
                 scan = scan_strategy()
                 score = scan.get("signals", 0)
                 threshold = scan.get("entry_threshold", 14)
                 max_sc = scan.get("max_score", 18)
-                if not scan.get("candidate") or score < 14:
+                if not scan.get("candidate") or score < threshold:
                     self.send_json({"executed":False,"reason":f"Need {threshold}/{max_sc}s, got {score}","scored":scan.get("scored",0)})
                 else:
                     # Check position limit
-                    if get_position_count() >= MAX_POSITIONS:
-                        self.send_json({"executed":False,"reason":f"Max {MAX_POSITIONS} positions reached"})
+                    if get_position_count() >= get_max_positions():
+                        max_pos = get_max_positions()
+                        self.send_json({"executed":False,"reason":f"Max {max_pos} positions reached ({STRATEGY_MODE} mode)"})
                         return
                     pick = scan["candidate"]
                     sym = pick["s"]
@@ -662,7 +758,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/positions":
             with POSITIONS_LOCK:
                 pos_copy = [dict(x, entry_time=round(x["entry_time"],0)) for x in POSITIONS]
-            self.send_json({"count": len(pos_copy), "max": MAX_POSITIONS, "positions": pos_copy})
+            self.send_json({"count": len(pos_copy), "max": get_max_positions(), "mode": STRATEGY_MODE, "positions": pos_copy})
         elif p == "/api/progress":
             self.send_json({"count": len(PROGRESS), "events": PROGRESS[-50:]})
         elif p == "/api/verified-tokens":
