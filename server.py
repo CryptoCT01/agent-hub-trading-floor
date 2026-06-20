@@ -398,6 +398,17 @@ def refresh_cache():
                             if len(hist) > 20:
                                 hist.pop(0)
                             cache["btc_history"] = hist
+                    # Store chart history for ETH, SOL, UNI, LINK (same as BTC)
+                    for chart_sym in ["ETH","SOL","UNI","LINK"]:
+                        csym = q["data"].get(chart_sym, {}).get("quote", {}).get("USD", {})
+                        if csym and csym.get("price"):
+                            key = chart_sym.lower() + "_history"
+                            with cache_lock:
+                                ch = cache.get(key, [])
+                                ch.append(round(csym["price"], 2))
+                                if len(ch) > 20:
+                                    ch.pop(0)
+                                cache[key] = ch
             with cache_lock:
                 cache["last_updated"] = time.strftime("%H:%M:%S UTC")
             LAST_FETCH = time.time()
@@ -906,9 +917,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"executed":False,"error":str(e)})
         elif p == "/api/status":
             self.send_json({"online": True, "cached_endpoints": list(cache.keys()) if cache else ["waiting..."]})
-        elif p == "/api/chart/btc":
-            hist = cache.get("btc_history", [])
-            self.send_json({"prices": hist, "symbol": "BTC"})
+        elif p.startswith("/api/chart/"):
+            chart_sym = p.split("/api/chart/")[-1].upper()
+            hist_key = chart_sym.lower() + "_history"
+            hist = cache.get(hist_key, [])
+            self.send_json({"prices": hist, "symbol": chart_sym})
         elif p == "/api/derivatives":
             self.send_json({"openInterest": "399.84B", "fundingRate": "+0.003%"})
         elif p == "/api/wallet":

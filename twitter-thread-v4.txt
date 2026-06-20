@@ -1,0 +1,91 @@
+🧵 1/6
+
+Trading Floor **v3.5 — Competition Ready** 🚀
+
+The autonomous trading terminal just got its biggest update yet. Submission locked for the @coinmarketcap BNB HACK. Here's everything that changed since v1.3:
+
+#CMCAgentHub #BNBHACK
+
+---
+
+2/6
+
+🛡️ **API Safety Controls**
+
+Added a 3-tier kill-switch panel with live status dots visible at a glance:
+
+🔴 ALL API OFF → Stops all CMC data. Trading auto-paused.
+🟡 NON-ESSENTIAL OFF → Keeps prices live, freezes HUD/station tiles.
+🔴 TRADING OFF → No auto-entries. Stop-losses + manual trades still work.
+
+Three colored dots below the ⏻ icon show the state without even clicking. Safety interlock: API OFF → Trading OFF automatically.
+
+#CMCAgentHub
+
+---
+
+3/6
+
+🎯 **3 Strategy Modes + Custom Settings**
+
+Switch between risk profiles in one click:
+
+🔴 RISKY — threshold 16/24 · max 4 positions
+🟡 MODERATE — threshold 18/24 · max 3 positions
+🟢 ULTRA SAFE — threshold 21/24 · max 2 positions
+
+⚙️ **Customize per mode** — click the gear icon to set your own MAX TRADES and $ PER TRADE for each mode. Settings persist to disk across restarts. Risk disclaimer included.
+
+#CMCAgentHub
+
+---
+
+4/6
+
+💰 **Portfolio Wallet — Deposit & Withdraw**
+
+Click the gold wallet pill → see every token balance with live USD values + total portfolio.
+
+📥 **DEPOSIT** — Shows your wallet address with QR code. Scan from any mobile wallet and send BEP-20 tokens instantly.
+📤 **WITHDRAW** — Send any token to any address from the dashboard.
+
+Quick Sell button on each token: 90% for non-BNB, BNB-0.002. One click → swap to BUSD.
+
+#CMCAgentHub
+
+---
+
+5/6
+
+🏁 **Competition Mode**
+
+New toggle in the bottom bar — activate for the live judging window:
+
+🔰 +3% early-exit — first trade of the day sells 50% at +3%
+⏰ 22h/24h rolling guarantee — auto-closes best performer if no trades close naturally
+✅ Natural closes (profit ladder / stop-loss) reset the timer
+
+Toggle OFF → normal strategy runs. Toggle ON → competition safety net kicks in.
+
+#CMCAgentHub
+
+---
+
+6/6
+
+📊 **What's Under the Hood**
+
+• 15-signal weighted engine (up from 8) — momentum, volume, RSI, derivatives, narratives, macro, breadth, and more
+• 73 verified BSC tokens with hardcoded PancakeSwap addresses
+• 22 isometric skill stations with neon category glow
+• Real chart history for BTC/ETH/SOL/UNI/LINK
+• Strategy Tracker pill — live trade count + performance panel
+• Per-token cap: max 1 position (diversify)
+• Position persistence across restarts
+• Profit ladder: +3% / +8% / +15% / +25% + trailing stop-loss
+
+Built with @coinmarketcap Data API + TWAK MCP + BSC.
+
+@coinmarketcap #CMCAgentHub #BNBHACK
+
+Built by @CryptoCTO1 🐦
