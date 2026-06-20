@@ -204,7 +204,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" id="compBottomPill" onclick="toggleCompPanel()" style="display:none;border-color:var(--gold);padding:4px 10px;gap:4px;min-height:26px"><span style="font-size:0.65rem;line-height:1">🏁</span><span id="compBottomLabel" style="font-weight:600;font-size:0.55rem;color:var(--fg)">COMP</span><span id="compBottomStatus" style="font-size:0.5rem;color:var(--fg)">OFF</span></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn" id="settingsBtn" onclick="toggleSettingsPanel()" style="font-size:0.65rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--fg2);padding:3px 8px;border-radius:8px;font-family:var(--mono);transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg2)'">⚙️</button><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
 <div id="compPanel" style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--purple);border-radius:12px;padding:14px;width:300px;font-family:var(--mono);box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
 <div class="floor" id="floor"></div>
-<div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button></div>
+<div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button><button onclick="resetStats()" style="font-size:0.5rem;background:none;border:1px solid var(--orange);color:var(--orange);padding:2px 6px;border-radius:6px;cursor:pointer;font-family:var(--mono);transition:.2s" onmouseover="this.style.background='var(--orange)';this.style.color='#000'" onmouseout="this.style.background='none';this.style.color='var(--orange)'">⟳ RESET</button></div>
 <div class="console" id="console"><div class="chart-h"><h3><span style="color:var(--gold)">TRADING CONSOLE</span></h3><button class="chart-close" onclick="toggleConsole()">×</button></div><div class="console-body"><div class="console-summary" id="consoleSummary"></div>
 <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.6rem;font-weight:600;color:var(--gold)">OPEN POSITIONS</div><div id="openPositions"></div>
 <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.6rem;font-weight:600;color:var(--gold);margin-top:8px">STRATEGY PERFORMANCE</div>
@@ -1012,6 +1012,20 @@ async function closeAllPositions(){
     else{alert('Close all failed: '+(d.reason||d.error||'unknown'));}
   }catch(e){alert('Error closing all positions');}
   if(b){b.textContent='✕ CLOSE ALL POSITIONS';b.disabled=false;}
+}
+
+async function resetStats(){
+  if(!confirm('Reset ALL trading stats for competition? This clears trade history, count, and sets PnL to $0.'))return;
+  try{
+    var r=await fetch('/api/stats/reset');
+    var d=await r.json();
+    if(d.executed){
+      alert('Stats reset! PnL starts from $'+d.initUsd.toFixed(2));
+      fetchWallet();loadPositions();renderTradeLog();
+    } else {
+      alert('Reset failed: '+(d.error||'unknown'));
+    }
+  }catch(e){alert('Error resetting stats');}
 }
 
 </script>

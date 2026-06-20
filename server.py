@@ -1030,6 +1030,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"executed": True, "count": len(results), "results": results})
             except Exception as e:
                 self.send_json({"executed": False, "error": str(e)})
+        elif p == "/api/stats/reset":
+            """Reset all trading stats: trade history, count, progress, initUsd."""
+            try:
+                global TRADE_HISTORY, TRADE_COUNT, PROGRESS
+                # Get current wallet balance to set as new initUsd
+                update_wallet_cache()
+                w = cache.get("wallet", {"usd": 49.00})
+                new_init = w.get("usd", 49.00)
+                TRADE_HISTORY.clear()
+                TRADE_COUNT = 0
+                PROGRESS.clear()
+                with cache_lock:
+                    cw = cache.get("wallet", {})
+                    cw["initUsd"] = new_init
+                    cw["closedTrades"] = 0
+                    cache["wallet"] = cw
+                save_positions()
+                print(f"  📊 Stats reset — initUsd=${new_init:.2f}, trades cleared")
+                self.send_json({"executed": True, "initUsd": new_init})
+            except Exception as e:
+                self.send_json({"executed": False, "error": str(e)})
         else:
             f = BASE_DIR / (p.lstrip("/") if p != "/" else "trading-dashboard.html")
             if f.exists():
