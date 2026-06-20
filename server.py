@@ -429,74 +429,73 @@ def refresh_cache():
 TRADE_HISTORY = []
 TRADE_COUNT = 0  # fresh start for competition
 
-def refresh_wallet():
-    while True:
+def update_wallet_cache():
+    """Immediately re-query TWAK balances and update the wallet cache."""
+    if not TWAK_ACCESS_ID or not TWAK_HMAC_SECRET:
+        return
+    def mc(m, a):
+        p = subprocess.Popen(['/Users/cryptot/.hermes/node/bin/twak','serve'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={'TWAK_ACCESS_ID':TWAK_ACCESS_ID,'TWAK_HMAC_SECRET':TWAK_HMAC_SECRET,'PATH':'/Users/cryptot/.hermes/node/bin'})
+        r = json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':m,'arguments':a}})
+        o, _ = p.communicate((r+'\n').encode(), timeout=15)
+        return json.loads(o.decode())
+    try:
+        b = mc('wallet_balance', {'chain':'bsc'})
+        bnb_w = int(b['result']['content'][0]['text'].split('"available": "')[1].split('"')[0]) / 1e18
+    except:
+        return
+    qc = cache.get("quotes", {}).get("data", {})
+    bp = qc.get("BNB", {}).get("quote", {}).get("USD", {}).get("price", 577) if qc else 577
+    token_addrs = {
+        "BUSD":"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+        "USDT":"0x55d398326f99059fF775485246999027B3197955",
+        "USDC":"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+        "DAI":"0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
+        "ETH":"0x2170Ed0880ac9A755fd29B2688956BD959F933F8"
+    }
+    wallet_items = [{"sym":"BNB","bal":round(bnb_w,6),"usd":round(bnb_w*bp,2),"canSell":True}]
+    total_usd = round(bnb_w*bp,2)
+    for sym, addr in token_addrs.items():
         try:
-            if not TWAK_ACCESS_ID or not TWAK_HMAC_SECRET:
-                time.sleep(60)
-                continue
-
-            def mc(m, a):
-                p = subprocess.Popen(['/Users/cryptot/.hermes/node/bin/twak','serve'],
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    env={'TWAK_ACCESS_ID':TWAK_ACCESS_ID,'TWAK_HMAC_SECRET':TWAK_HMAC_SECRET,'PATH':'/Users/cryptot/.hermes/node/bin'})
-                r = json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':m,'arguments':a}})
-                o, _ = p.communicate((r+'\n').encode(), timeout=15)
-                return json.loads(o.decode())
-
-            b = mc('wallet_balance', {'chain':'bsc'})
-            bnb_w = int(b['result']['content'][0]['text'].split('"available": "')[1].split('"')[0]) / 1e18
-            qc = cache.get("quotes", {}).get("data", {})
-            bp = qc.get("BNB", {}).get("quote", {}).get("USD", {}).get("price", 577) if qc else 577
-            # Query all supported token balances
-            token_addrs = {
-                "BUSD":"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
-                "USDT":"0x55d398326f99059fF775485246999027B3197955",
-                "USDC":"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-                "DAI":"0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
-                "ETH":"0x2170Ed0880ac9A755fd29B2688956BD959F933F8"
-            }
-            wallet_items = [{"sym":"BNB","bal":round(bnb_w,6),"usd":round(bnb_w*bp,2),"canSell":True}]
-            total_usd = round(bnb_w*bp,2)
-            for sym, addr in token_addrs.items():
-                try:
-                    t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
-                    bal_txt = t['result']['content'][0]['text']
-                    bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
-                    price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 1) if qc else 1
-                    usd_v = round(bal * price, 2)
-                    if bal > 0:
-                        wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
-                        total_usd += usd_v
-                except:
-                    pass
-            busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
-            # Also query tokens from open positions so they show in wallet total
-            pos_tokens = {}
-            with POSITIONS_LOCK:
-                for p in POSITIONS:
-                    if p["token"] not in pos_tokens and p["address"] and len(p["address"]) > 20:
-                        pos_tokens[p["token"]] = p["address"]
-            for sym, addr in pos_tokens.items():
-                if sym in [i["sym"] for i in wallet_items]: continue
-                try:
-                    t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
-                    bal_txt = t['result']['content'][0]['text']
-                    bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
-                    price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 0) if qc else 0
-                    usd_v = round(bal * price, 2)
-                    if bal > 0 and usd_v > 0:
-                        wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
-                        total_usd += usd_v
-                except:
-                    pass
-            busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
-            with cache_lock:
-                cache["wallet"] = {"bnb": round(bnb_w,4), "busd": round(busd_w,4), "usd": round(total_usd,2), "bnb_price": round(bp,2), "closedTrades": TRADE_COUNT, "initUsd": 49.00}
-                cache["wallet_details"] = {"total": round(total_usd,2), "items": wallet_items}
-            print("  💰 WALLET {:.4f} BNB | ${:.2f} total".format(bnb_w, total_usd))
+            t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
+            bal_txt = t['result']['content'][0]['text']
+            bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+            price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 1) if qc else 1
+            usd_v = round(bal * price, 2)
+            if bal > 0:
+                wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
+                total_usd += usd_v
         except:
             pass
+    busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
+    pos_tokens = {}
+    with POSITIONS_LOCK:
+        for p in POSITIONS:
+            if p["token"] not in pos_tokens and p["address"] and len(p["address"]) > 20:
+                pos_tokens[p["token"]] = p["address"]
+    for sym, addr in pos_tokens.items():
+        if sym in [i["sym"] for i in wallet_items]: continue
+        try:
+            t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
+            bal_txt = t['result']['content'][0]['text']
+            bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+            price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 0) if qc else 0
+            usd_v = round(bal * price, 2)
+            if bal > 0 and usd_v > 0:
+                wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
+                total_usd += usd_v
+        except:
+            pass
+    busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
+    with cache_lock:
+        cache["wallet"] = {"bnb": round(bnb_w,4), "busd": round(busd_w,4), "usd": round(total_usd,2), "bnb_price": round(bp,2), "closedTrades": TRADE_COUNT, "initUsd": 49.00}
+        cache["wallet_details"] = {"total": round(total_usd,2), "items": wallet_items}
+    print("  💰 WALLET {:.4f} BNB | ${:.2f} total".format(bnb_w, total_usd))
+
+def refresh_wallet():
+    while True:
+        update_wallet_cache()
         time.sleep(60)
 
 def scan_strategy():
@@ -994,6 +993,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     TRADE_COUNT += 1
                     ts = dt.utcnow().strftime("%d %b %H:%M")
                     TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→BUSD", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
+                    update_wallet_cache()
                     self.send_json({"executed": True, "tx": tx_hash, "explorer": sd.get("explorer", ""), "summary": sd.get("summary", ""), "token": sym})
                 else:
                     self.send_json({"executed": False, "reason": sd.get("message", "Swap failed")})
@@ -1026,6 +1026,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     else:
                         results.append({"token": sym, "status": "failed", "error": sd.get("message", "Swap failed")})
                         break
+                update_wallet_cache()
                 self.send_json({"executed": True, "count": len(results), "results": results})
             except Exception as e:
                 self.send_json({"executed": False, "error": str(e)})
