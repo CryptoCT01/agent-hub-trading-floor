@@ -126,20 +126,48 @@ def score_to_busd(score, max_score, cat):
     if cat == "stable":
         return 0
     params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
-    base = 1.0  # minimum $1 for competition
+    per_trade = get_mode_config()["busd_per_trade"]
+    base = per_trade  # use per-mode per-trade amount (default $1)
     if score >= max_score:
-        base = 2.50
+        base = min(per_trade * 2.5, per_trade * 3)
     elif score >= max_score - 1:
-        base = 1.50
+        base = min(per_trade * 1.5, per_trade * 2)
     return min(base, params["max_busd"])
 
 # ===== STRATEGY MODE =====
 STRATEGY_MODE = "moderate"  # risky, moderate, ultra_safe
 MODE_CONFIG = {
-    "risky":     {"entry_threshold": 16, "max_positions": 4, "label": "🔴 RISKY", "desc": "Aggressive — lower threshold"},
-    "moderate":  {"entry_threshold": 18, "max_positions": 3, "label": "🟡 MODERATE", "desc": "Balanced risk-reward"},
-    "ultra_safe":{"entry_threshold": 21, "max_positions": 2, "label": "🟢 ULTRA SAFE", "desc": "Conservative — high threshold"},
+    "risky":     {"entry_threshold": 16, "max_positions": 4, "busd_per_trade": 1.0, "label": "🔴 RISKY", "desc": "Aggressive — lower threshold"},
+    "moderate":  {"entry_threshold": 18, "max_positions": 3, "busd_per_trade": 1.0, "label": "🟡 MODERATE", "desc": "Balanced risk-reward"},
+    "ultra_safe":{"entry_threshold": 21, "max_positions": 2, "busd_per_trade": 1.0, "label": "🟢 ULTRA SAFE", "desc": "Conservative — high threshold"},
 }
+
+# Custom mode overrides (optional — user can customise per-mode)
+CUSTOM_MODE_CONFIG = {}  # {mode: {field: value, ...}}
+CUSTOM_CONFIG_FILE = "/tmp/strategy_custom.json"
+
+def get_mode_config(mode=None):
+    """Return merged config for a mode: defaults overlaid with any custom overrides."""
+    if mode is None:
+        mode = STRATEGY_MODE
+    base = dict(MODE_CONFIG[mode])
+    if mode in CUSTOM_MODE_CONFIG:
+        base.update(CUSTOM_MODE_CONFIG[mode])
+    return base
+
+def save_custom_config():
+    try:
+        with open(CUSTOM_CONFIG_FILE, "w") as f:
+            json.dump(CUSTOM_MODE_CONFIG, f)
+    except: pass
+
+def load_custom_config():
+    global CUSTOM_MODE_CONFIG
+    try:
+        if os.path.exists(CUSTOM_CONFIG_FILE):
+            with open(CUSTOM_CONFIG_FILE) as f:
+                CUSTOM_MODE_CONFIG = json.load(f)
+    except: pass
 
 def get_strategy_mode():
     return STRATEGY_MODE
@@ -155,7 +183,7 @@ def get_entry_threshold():
     return MODE_CONFIG[STRATEGY_MODE]["entry_threshold"]
 
 def get_max_positions():
-    return MODE_CONFIG[STRATEGY_MODE]["max_positions"]
+    return get_mode_config()["max_positions"]
 
 # ===== API / TRADING TOGGLES =====
 API_PAUSED = False
@@ -677,6 +705,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.send_json({"success": True, "mode": STRATEGY_MODE, "threshold": get_entry_threshold(), "max_positions": get_max_positions(), "config": MODE_CONFIG[STRATEGY_MODE], "available": list(MODE_CONFIG.keys())})
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)})
+        elif p == "/api/strategy/settings":
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                save = qp.get("save", [None])[0]
+                if save:
+                    global CUSTOM_MODE_CONFIG
+                    new_cfg = {}
+                    for mode in MODE_CONFIG:
+                        mx = qp.get(mode + "_max", [None])[0]
+                        bd = qp.get(mode + "_busd", [None])[0]
+                        if mx is not None or bd is not None:
+                            over = {}
+                            if mx is not None:
+                                over["max_positions"] = max(1, min(20, int(mx)))
+                            if bd is not None:
+                                over["busd_per_trade"] = max(0.5, min(100.0, float(bd)))
+                            new_cfg[mode] = over
+                    CUSTOM_MODE_CONFIG = new_cfg
+                    save_custom_config()
+                    # Build response with merged configs
+                    merged = {m: get_mode_config(m) for m in MODE_CONFIG}
+                    self.send_json({"success": True, "custom": CUSTOM_MODE_CONFIG, "merged": merged})
+                else:
+                    # Return defaults + custom + merged for all modes
+                    merged = {m: get_mode_config(m) for m in MODE_CONFIG}
+                    self.send_json({
+                        "success": True,
+                        "defaults": MODE_CONFIG,
+                        "custom": CUSTOM_MODE_CONFIG,
+                        "merged": merged,
+                        "current_mode": STRATEGY_MODE,
+                    })
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)})
         elif p == "/api/strategy/execute":
             try:
                 with TOGGLES_LOCK:
@@ -1006,6 +1069,7 @@ def refresh_positions():
 if __name__ == "__main__":
     # Restore positions from disk (survives restarts)
     load_positions()
+    load_custom_config()
     print("📊 Server on port {}".format(PORT))
     print("  📊 Market data refreshing every {}s...".format(CACHE_TTL))
     t = threading.Thread(target=refresh_cache, daemon=True)
