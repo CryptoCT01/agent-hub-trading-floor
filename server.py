@@ -157,6 +157,32 @@ def get_entry_threshold():
 def get_max_positions():
     return MODE_CONFIG[STRATEGY_MODE]["max_positions"]
 
+# ===== API / TRADING TOGGLES =====
+API_PAUSED = False
+NON_ESSENTIAL_PAUSED = False
+TRADING_PAUSED = False
+TOGGLES_LOCK = threading.Lock()
+
+def get_toggles():
+    with TOGGLES_LOCK:
+        return {"api_paused": API_PAUSED, "non_essential_paused": NON_ESSENTIAL_PAUSED, "trading_paused": TRADING_PAUSED}
+
+def set_toggles(api=None, non_essential=None, trading=None):
+    global API_PAUSED, NON_ESSENTIAL_PAUSED, TRADING_PAUSED
+    with TOGGLES_LOCK:
+        if api is not None:
+            API_PAUSED = api
+            if api:  # API off → auto-safe: pause non-essential too
+                NON_ESSENTIAL_PAUSED = True
+        if non_essential is not None:
+            NON_ESSENTIAL_PAUSED = non_essential
+        if trading is not None:
+            TRADING_PAUSED = trading
+        # Safety interlock: if ALL API paused, force trading off too
+        if API_PAUSED and NON_ESSENTIAL_PAUSED:
+            TRADING_PAUSED = True
+    return get_toggles()
+
 # ===== POSITION TRACKING =====
 POSITIONS = []  # [{token,address,entry_price,amt_tokens,amt_busd,entry_time,cat,tier1,tier2,tier3,stop_loss,highest}]
 POSITIONS_LOCK = threading.Lock()
@@ -308,26 +334,31 @@ def refresh_cache():
     global LAST_FETCH
     while True:
         try:
-            g = fetch_cmc("global-metrics/quotes/latest", "")
-            if "error" not in g and "data" in g:
-                fg = fetch_cmc_v3("fear-and-greed/latest")
-                if "error" not in fg and "data" in fg:
-                    g["data"]["fear_and_greed"] = fg["data"]
-                with cache_lock:
-                    cache["global"] = g
-            qs = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG,COMP,AXS,FIL,SAND,MANA"
-            q = fetch_cmc("cryptocurrency/quotes/latest", "symbol=" + qs + "&convert=USD")
-            if "error" not in q and "data" in q:
-                with cache_lock:
-                    cache["quotes"] = q
-                btc = q["data"].get("BTC", {}).get("quote", {}).get("USD", {})
-                if btc and btc.get("price"):
+            with TOGGLES_LOCK:
+                api_off = API_PAUSED
+                non_ess_off = NON_ESSENTIAL_PAUSED
+            if not api_off:
+                if not non_ess_off:
+                    g = fetch_cmc("global-metrics/quotes/latest", "")
+                    if "error" not in g and "data" in g:
+                        fg = fetch_cmc_v3("fear-and-greed/latest")
+                        if "error" not in fg and "data" in fg:
+                            g["data"]["fear_and_greed"] = fg["data"]
+                        with cache_lock:
+                            cache["global"] = g
+                qs = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG,COMP,AXS,FIL,SAND,MANA"
+                q = fetch_cmc("cryptocurrency/quotes/latest", "symbol=" + qs + "&convert=USD")
+                if "error" not in q and "data" in q:
                     with cache_lock:
-                        hist = cache.get("btc_history", [])
-                        hist.append(round(btc["price"], 0))
-                        if len(hist) > 20:
-                            hist.pop(0)
-                        cache["btc_history"] = hist
+                        cache["quotes"] = q
+                    btc = q["data"].get("BTC", {}).get("quote", {}).get("USD", {})
+                    if btc and btc.get("price"):
+                        with cache_lock:
+                            hist = cache.get("btc_history", [])
+                            hist.append(round(btc["price"], 0))
+                            if len(hist) > 20:
+                                hist.pop(0)
+                            cache["btc_history"] = hist
             with cache_lock:
                 cache["last_updated"] = time.strftime("%H:%M:%S UTC")
             LAST_FETCH = time.time()
@@ -648,6 +679,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"success": False, "error": str(e)})
         elif p == "/api/strategy/execute":
             try:
+                with TOGGLES_LOCK:
+                    if TRADING_PAUSED:
+                        self.send_json({"executed":False,"reason":"Auto-trading paused — toggle TRADING ON to resume","toggles":get_toggles()}); return
                 scan = scan_strategy()
                 score = scan.get("signals", 0)
                 threshold = scan.get("entry_threshold", 14)
@@ -820,6 +854,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for sym, addr in VERIFIED_TOKENS.items():
                 info[sym] = {"address": addr, "isTwakNative": sym in TWAK_NATIVE}
             self.send_json({"count": len(info), "tokens": info})
+        elif p == "/api/toggle":
+            qs = urllib.parse.urlparse(self.path).query
+            qp = urllib.parse.parse_qs(qs)
+            api = qp.get("api", [None])[0]
+            non_ess = qp.get("non_essential", [None])[0]
+            trading = qp.get("trading", [None])[0]
+            def to_bool(v):
+                if v == "on": return False
+                if v == "off": return True
+                return None
+            toggles = set_toggles(api=to_bool(api), non_essential=to_bool(non_ess), trading=to_bool(trading))
+            self.send_json(toggles)
         elif p == "/api/position/close":
             """Close a single position: sell to BUSD and remove from tracking."""
             try:
