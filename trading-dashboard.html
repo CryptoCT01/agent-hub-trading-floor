@@ -188,7 +188,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="stat" id="livePill" style="flex-direction:row;border-color:var(--green);background:rgba(0,230,118,0.08);cursor:pointer;position:relative;gap:8px" onclick="togglePanel()"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:var(--mono);font-size:0.55rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--green);line-height:1;margin-bottom:1px">API TOGGLES</span><div style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span><span style="font-family:var(--mono);font-size:0.55rem;color:var(--green)" id="uptime">LIVE</span><span style="font-family:var(--mono);font-size:0.45rem;color:var(--fg3);margin-left:2px" id="liveTime"></span></div></div><div style="display:flex;flex-direction:column;align-items:center;gap:1px;margin-left:2px"><span style="font-size:0.85rem;line-height:1;color:var(--fg)">⏻</span><div id="liveDots" class="live-dots"><span class="live-dot" data-toggle="api" style="background:var(--green)"></span><span class="live-dot" data-toggle="non_essential" style="background:var(--green)"></span><span class="live-dot" data-toggle="trading" style="background:var(--green)"></span></div></div></div>
 <div id="togglePanel" style="display:none;position:absolute;top:42px;right:20px;z-index:999;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px;width:280px;font-family:var(--mono);box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
 </div></div>
-<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn" id="settingsBtn" onclick="toggleSettingsPanel()" style="font-size:0.65rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--fg2);padding:3px 8px;border-radius:8px;font-family:var(--mono);transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg2)'">⚙️</button><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" id="compBottomPill" onclick="toggleCompPanel()" style="display:none;border-color:var(--gold);padding:4px 10px;gap:4px;min-height:26px"><span style="font-size:0.65rem;line-height:1">🏁</span><span id="compBottomLabel" style="font-weight:600;font-size:0.55rem;color:var(--fg)">COMP</span><span id="compBottomStatus" style="font-size:0.5rem;color:var(--fg)">OFF</span></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn" id="settingsBtn" onclick="toggleSettingsPanel()" style="font-size:0.65rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--fg2);padding:3px 8px;border-radius:8px;font-family:var(--mono);transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg2)'">⚙️</button><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div id="compPanel" style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--purple);border-radius:12px;padding:14px;width:300px;font-family:var(--mono);box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
 <div class="floor" id="floor"></div>
 <div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button></div>
 <div class="console" id="console"><div class="chart-h"><h3><span style="color:var(--gold)">TRADING CONSOLE</span></h3><button class="chart-close" onclick="toggleConsole()">×</button></div><div class="console-body"><div class="console-summary" id="consoleSummary"></div>
@@ -397,6 +398,10 @@ function updateTracker(){
   }).catch(function(){});
 }
 fetchMode();
+// Init COMP pill
+fetchCompMode();
+setInterval(fetchCompMode, 30000);
+document.getElementById('compBottomPill').style.display='';
 function refreshWallet(){document.getElementById('wlBal').textContent=bnbBal.toFixed(4)+' BNB';const pnl=usdBal-initUsd;document.getElementById('wlPnl').textContent=(pnl>=0?'+':'')+'$'+pnl.toFixed(2);document.getElementById('wlPnl').className='wl-pnl '+(pnl>=0?'positive':'negative');document.getElementById('wlTx').textContent=closedTrades+' trade ⏎';}
 async function fetchWallet(){try{const r=await fetch('/api/wallet'),d=await r.json();if(d.bnb){bnbBal=d.bnb;usdBal=d.usd||bnbBal*600;if(d.closedTrades!==undefined)closedTrades=d.closedTrades;if(d.initUsd!==undefined)initUsd=d.initUsd;refreshWallet();if(document.getElementById('console').classList.contains('show'))renderConsole();}}catch(e){}}
 refreshWallet();fetchWallet();setInterval(fetchWallet,60000);
@@ -429,6 +434,83 @@ function updateLiveDots(){
       dots[i].style.boxShadow=states[i]?'none':'0 0 4px var(--red)';
     }
   }).catch(function(){});
+}
+// COMP mode toggle + explanation
+function compStatusText(on){
+  if(on){
+    return '<div style="font-size:0.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">🏁 COMPETITION MODE</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<div style="padding:8px 10px;background:rgba(187,134,252,0.1);border:1px solid var(--purple);border-radius:8px">'
+      +'<div style="font-size:0.55rem;font-weight:700;color:var(--gold);margin-bottom:6px">🏁 ON — Competition Rules</div>'
+      +'<div style="font-size:0.5rem;color:var(--fg2);line-height:1.6">'
+      +'🔰 <b>+3% early exit</b> — first trade of the day sells 50% at +3%<br>'
+      +'⏰ <b>22h / 24h guarantee</b> — auto-closes best performer if no trades close naturally<br>'
+      +'✅ Any natural close (profit ladder / stop-loss) resets the 24h timer</div></div>'
+      +'<div style="padding:8px 10px;background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.2);border-radius:8px">'
+      +'<div style="font-size:0.55rem;font-weight:700;color:var(--green);margin-bottom:6px">◻ OFF — Normal Strategy</div>'
+      +'<div style="font-size:0.5rem;color:var(--fg2);line-height:1.6">'
+      +'Standard profit ladder (+8%/+15%/+25%)<br>'
+      +'Trailing stop-loss only<br>'
+      +'No timed forced closes</div></div></div>'
+      +'<div style="margin-top:8px;text-align:right"><button onclick="setCompMode(false)" style="font-family:var(--mono);font-size:0.5rem;font-weight:700;background:rgba(255,71,87,0.1);border:1px solid var(--red);color:var(--red);padding:5px 14px;border-radius:8px;cursor:pointer">SWITCH TO NORMAL</button></div>';
+  } else {
+    return '<div style="font-size:0.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">🏁 COMPETITION MODE</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<div style="padding:8px 10px;background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.2);border-radius:8px">'
+      +'<div style="font-size:0.55rem;font-weight:700;color:var(--green);margin-bottom:6px">◻ OFF — Normal Strategy</div>'
+      +'<div style="font-size:0.5rem;color:var(--fg2);line-height:1.6">'
+      +'Standard profit ladder (+8%/+15%/+25%)<br>'
+      +'Trailing stop-loss only<br>'
+      +'No timed forced closes</div></div>'
+      +'<div style="padding:8px 10px;background:rgba(187,134,252,0.1);border:1px solid var(--purple);border-radius:8px">'
+      +'<div style="font-size:0.55rem;font-weight:700;color:var(--gold);margin-bottom:6px">🏁 ON — Competition Rules</div>'
+      +'<div style="font-size:0.5rem;color:var(--fg2);line-height:1.6">'
+      +'🔰 +3% early-exit on first trade of the day<br>'
+      +'⏰ 22h/24h guarantee auto-closes best performer<br>'
+      +'✅ Natural closes reset the timer</div></div></div>'
+      +'<div style="margin-top:8px;text-align:right"><button onclick="setCompMode(true)" style="font-family:var(--mono);font-size:0.5rem;font-weight:700;background:rgba(187,134,252,0.15);border:1px solid var(--purple);color:var(--purple);padding:5px 14px;border-radius:8px;cursor:pointer">SWITCH TO COMPETITION</button></div>';
+  }
+}
+async function fetchCompMode(){
+  try{
+    var r=await fetch('/api/strategy/competition');
+    var d=await r.json();
+    var pill=document.getElementById('compBottomPill');
+    var label=document.getElementById('compBottomLabel');
+    var status=document.getElementById('compBottomStatus');
+    if(d.competition_mode){
+      pill.style.borderColor='var(--purple)';
+      label.style.color='var(--purple)';
+      status.textContent='ON';
+      status.style.color='var(--purple)';
+    } else {
+      pill.style.borderColor='var(--gold)';
+      label.style.color='var(--fg)';
+      status.textContent='OFF';
+      status.style.color='var(--fg)';
+    }
+  }catch(e){}
+}
+function toggleCompPanel(){
+  var p=document.getElementById('compPanel');
+  var toggles=document.getElementById('togglePanel');
+  if(toggles.style.display==='block') toggles.style.display='none';
+  if(p.style.display==='block'){p.style.display='none';return;}
+  fetch('/api/strategy/competition').then(function(r){return r.json();}).then(function(d){
+    p.style.display='block';
+    p.innerHTML=compStatusText(!!d.competition_mode);
+  }).catch(function(){
+    p.style.display='block';
+    p.innerHTML='<div style="padding:10px;text-align:center;color:var(--red);font-size:0.5rem">Error</div>';
+  });
+}
+async function setCompMode(on){
+  try{
+    var r=await fetch('/api/strategy/competition?on='+(on?'true':'false'));
+    var d=await r.json();
+    document.getElementById('compPanel').style.display='none';
+    fetchCompMode();
+  }catch(e){}
 }
 // Settings panel
 function toggleSettingsPanel(){
