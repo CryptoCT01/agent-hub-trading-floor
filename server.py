@@ -217,7 +217,7 @@ def set_toggles(api=None, non_essential=None, trading=None):
 
 # ===== POSITION TRACKING =====
 POSITIONS = []  # [{token,address,entry_price,amt_tokens,amt_busd,entry_time,cat,tier1,tier2,tier3,stop_loss,highest}]
-POSITIONS_LOCK = threading.Lock()
+POSITIONS_LOCK = threading.RLock()
 MAX_POSITIONS = 4
 POSITIONS_FILE = "/tmp/trading_positions.json"
 
