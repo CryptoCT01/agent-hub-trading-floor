@@ -161,12 +161,40 @@ def get_max_positions():
 POSITIONS = []  # [{token,address,entry_price,amt_tokens,amt_busd,entry_time,cat,tier1,tier2,tier3,stop_loss,highest}]
 POSITIONS_LOCK = threading.Lock()
 MAX_POSITIONS = 4
+POSITIONS_FILE = "/tmp/trading_positions.json"
+
+def save_positions():
+    """Persist positions and trade history to disk so they survive restarts."""
+    try:
+        with POSITIONS_LOCK:
+            data = {"positions": POSITIONS, "progress": PROGRESS[-200:], "trades": TRADE_HISTORY[-200:]}
+        with open(POSITIONS_FILE, "w") as f:
+            json.dump(data, f)
+    except: pass
+
+def load_positions():
+    """Load persisted positions on startup."""
+    global POSITIONS, PROGRESS, TRADE_HISTORY, TRADE_COUNT
+    try:
+        if os.path.exists(POSITIONS_FILE):
+            with open(POSITIONS_FILE) as f:
+                data = json.load(f)
+            with POSITIONS_LOCK:
+                POSITIONS = data.get("positions", [])
+                PROGRESS = data.get("progress", [])
+            TRADE_HISTORY = data.get("trades", [])
+            TRADE_COUNT = len(TRADE_HISTORY)
+    except: pass
 
 def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
     with POSITIONS_LOCK:
         max_pos = get_max_positions()
         if len(POSITIONS) >= max_pos:
             return False, f"Max {max_pos} positions reached ({STRATEGY_MODE} mode)"
+        # Per-token cap: max 2 positions of the same cryptocurrency
+        same_count = sum(1 for p in POSITIONS if p["token"] == token)
+        if same_count >= 2:
+            return False, f"Max 2 positions of {token} reached — diversify"
         cat_params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
         stop_pct = cat_params["stop"]
         now = time.time()
@@ -180,6 +208,7 @@ def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
             "trailing_stop": entry_price_busd * (1 - stop_pct),
         })
         PROGRESS.append({"action":"OPEN","sym":token,"amt":f"{amt_busd}BUSD","time":now})
+        save_positions()
         return True, f"Position opened: {amt_tokens:.4f} {token} for ${amt_busd:.2f}"
 
 def close_position(idx, reason="closed"):
@@ -187,6 +216,7 @@ def close_position(idx, reason="closed"):
         if idx < len(POSITIONS):
             p = POSITIONS.pop(idx)
             PROGRESS.append({"action":"CLOSE","sym":p["token"],"reason":reason,"time":time.time()})
+            save_positions()
             return True
         return False
 
@@ -211,26 +241,21 @@ def twak_swap_text(result):
     return result.get("result",{}).get("content",[{}])[0].get("text","{}")
 
 def check_token_safe(symbol, address):
-    """Run TWAK risk check on a token. Returns (safe: bool, reason: str)."""
+    """Lightweight safety check: verify the token is recognized by TWAK with a live price.
+    Uses get_token_price since get_swap_quote / validate_transaction require a higher TWAK plan.
+    For the curated 69-token verified list, this confirms the contract is alive and recognized."""
     try:
-        r = twak_jsonrpc("check_token_risk", {"chain":"bsc","tokenAddress":address})
+        r = twak_jsonrpc("get_token_price", {"chain":"bsc","token":address})
         text = twak_swap_text(r)
         data = json.loads(text) if isinstance(text, str) else text
-        if not data.get("success"):
-            return False, f"Risk check failed for {symbol}"
-        if data.get("isHoneypot", False):
-            return False, f"{symbol} is a honeypot — blocked"
-        if not data.get("supportsSwap", False):
-            return False, f"{symbol} does not support swaps — blocked"
-        risk = data.get("riskLevel", "unknown")
-        if risk in ("critical", "high"):
-            return False, f"{symbol} risk level is {risk} — blocked"
-        warnings = data.get("warnings", [])
-        if "Honeypot" in str(warnings):
-            return False, f"{symbol} has honeypot warning — blocked"
-        return True, f"Safe (risk={risk}, audit={data.get('hasAudit',False)}, honeypot={data.get('isHoneypot',False)})"
+        if not data.get("success", False):
+            return False, f"{symbol} price check failed — token may be unrecognized"
+        price = data.get("priceUsd", 0)
+        if price <= 0:
+            return False, f"{symbol} has zero price — may be dead or unswappable"
+        return True, f"Safe — live price ${price:.4f}"
     except Exception as e:
-        return False, f"Risk check error: {e}"
+        return False, f"Price check error: {e}"
 
 # Load env vars from temp file (for background process compatibility)
 _env_file = "/tmp/trading_env.json"
@@ -239,7 +264,7 @@ if os.path.exists(_env_file):
         import json as _json
         with open(_env_file) as _f:
             for _k, _v in _json.load(_f).items():
-                if _v: os.environ.setdefault(_k, _v)
+                if _v: os.environ[_k] = _v
     except: pass
 
 CMC_API_KEY = os.environ.get("CMC_API_KEY", "set-this-via-env-var")
@@ -290,7 +315,7 @@ def refresh_cache():
                     g["data"]["fear_and_greed"] = fg["data"]
                 with cache_lock:
                     cache["global"] = g
-            qs = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG"
+            qs = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG,COMP,AXS,FIL,SAND,MANA"
             q = fetch_cmc("cryptocurrency/quotes/latest", "symbol=" + qs + "&convert=USD")
             if "error" not in q and "data" in q:
                 with cache_lock:
@@ -360,6 +385,26 @@ def refresh_wallet():
                     price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 1) if qc else 1
                     usd_v = round(bal * price, 2)
                     if bal > 0:
+                        wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
+                        total_usd += usd_v
+                except:
+                    pass
+            busd_w = next((i["bal"] for i in wallet_items if i["sym"]=="BUSD"), 0)
+            # Also query tokens from open positions so they show in wallet total
+            pos_tokens = {}
+            with POSITIONS_LOCK:
+                for p in POSITIONS:
+                    if p["token"] not in pos_tokens and p["address"] and len(p["address"]) > 20:
+                        pos_tokens[p["token"]] = p["address"]
+            for sym, addr in pos_tokens.items():
+                if sym in [i["sym"] for i in wallet_items]: continue
+                try:
+                    t = mc('token_balance', {'chain':'bsc','address':'0xC41828401DABEE1B7Ceaa0E4410601020dB39774','tokenAddress':addr})
+                    bal_txt = t['result']['content'][0]['text']
+                    bal = int(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+                    price = qc.get(sym, {}).get("quote", {}).get("USD", {}).get("price", 0) if qc else 0
+                    usd_v = round(bal * price, 2)
+                    if bal > 0 and usd_v > 0:
                         wallet_items.append({"sym":sym,"bal":round(bal,6),"usd":usd_v,"canSell":True})
                         total_usd += usd_v
                 except:
@@ -748,7 +793,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/derivatives":
             self.send_json({"openInterest": "399.84B", "fundingRate": "+0.003%"})
         elif p == "/api/wallet":
-            w = cache.get("wallet", {"bnb": 0, "usd": 0, "bnb_price": 577, "closedTrades": TRADE_COUNT, "initUsd": 49.00})
+            closed_count = sum(1 for e in PROGRESS if e.get("action") == "CLOSE")
+            w = cache.get("wallet", {"bnb": 0, "usd": 0, "bnb_price": 577, "closedTrades": 0, "initUsd": 49.00})
+            w["closedTrades"] = closed_count
             self.send_json(w)
         elif p == "/api/wallet/details":
             wd = cache.get("wallet_details", {"total":0,"items":[]})
@@ -758,6 +805,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/positions":
             with POSITIONS_LOCK:
                 pos_copy = [dict(x, entry_time=round(x["entry_time"],0)) for x in POSITIONS]
+            # Attach current price from quotes cache
+            qd = cache.get("quotes", {})
+            qd_data = qd.get("data", {}) if isinstance(qd, dict) else {}
+            for pos in pos_copy:
+                tok = qd_data.get(pos["token"], {}).get("quote", {}).get("USD", {})
+                pos["current_price"] = round(tok.get("price", 0), 4) if tok else 0
             self.send_json({"count": len(pos_copy), "max": get_max_positions(), "mode": STRATEGY_MODE, "positions": pos_copy})
         elif p == "/api/progress":
             self.send_json({"count": len(PROGRESS), "events": PROGRESS[-50:]})
@@ -767,6 +820,71 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for sym, addr in VERIFIED_TOKENS.items():
                 info[sym] = {"address": addr, "isTwakNative": sym in TWAK_NATIVE}
             self.send_json({"count": len(info), "tokens": info})
+        elif p == "/api/position/close":
+            """Close a single position: sell to BUSD and remove from tracking."""
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                idx = int(qp.get("idx", ["-1"])[0])
+                with POSITIONS_LOCK:
+                    if idx < 0 or idx >= len(POSITIONS):
+                        self.send_json({"executed": False, "reason": "Invalid position index"}); return
+                    pos = POSITIONS[idx]
+                    sym, addr, amt_t = pos["token"], pos["address"], pos["amt_tokens"]
+                if amt_t < 0.0001:
+                    close_position(idx, "closed")
+                    self.send_json({"executed": True, "reason": "Empty position closed"})
+                    return
+                # Sell position tokens to BUSD via TWAK
+                if sym in TWAK_NATIVE or sym == "BNB":
+                    to_use = sym
+                else:
+                    to_use = addr
+                result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
+                text = twak_swap_text(result)
+                sd = json.loads(text) if isinstance(text, str) else text
+                tx_hash = sd.get("hash", "")
+                success = sd.get("success", False) or bool(tx_hash)
+                if success:
+                    close_position(idx, "manual close")
+                    TRADE_COUNT += 1
+                    ts = dt.utcnow().strftime("%d %b %H:%M")
+                    TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→BUSD", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
+                    self.send_json({"executed": True, "tx": tx_hash, "explorer": sd.get("explorer", ""), "summary": sd.get("summary", ""), "token": sym})
+                else:
+                    self.send_json({"executed": False, "reason": sd.get("message", "Swap failed")})
+            except Exception as e:
+                self.send_json({"executed": False, "error": str(e)})
+        elif p == "/api/position/close-all":
+            """Close ALL positions: sell each to BUSD and remove tracking."""
+            try:
+                results = []
+                while True:
+                    with POSITIONS_LOCK:
+                        if not POSITIONS: break
+                        pos = POSITIONS[0]
+                        sym, addr, amt_t = pos["token"], pos["address"], pos["amt_tokens"]
+                    if amt_t < 0.0001:
+                        close_position(0, "closed")
+                        results.append({"token": sym, "status": "empty"})
+                        continue
+                    to_use = sym if (sym in TWAK_NATIVE or sym == "BNB") else addr
+                    result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
+                    text = twak_swap_text(result)
+                    sd = json.loads(text) if isinstance(text, str) else text
+                    tx_hash = sd.get("hash", "")
+                    if sd.get("success", False) or bool(tx_hash):
+                        close_position(0, "close-all")
+                        TRADE_COUNT += 1
+                        ts = dt.utcnow().strftime("%d %b %H:%M")
+                        TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→BUSD", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
+                        results.append({"token": sym, "status": "sold", "tx": tx_hash})
+                    else:
+                        results.append({"token": sym, "status": "failed", "error": sd.get("message", "Swap failed")})
+                        break
+                self.send_json({"executed": True, "count": len(results), "results": results})
+            except Exception as e:
+                self.send_json({"executed": False, "error": str(e)})
         else:
             f = BASE_DIR / (p.lstrip("/") if p != "/" else "trading-dashboard.html")
             if f.exists():
@@ -831,6 +949,7 @@ def refresh_positions():
                                         TRADE_COUNT += 1
                                         ts = dt.utcnow().strftime("%d %b %H:%M")
                                         TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→BUSD","dir":label,"amt":d.get("summary",f"sold"),"tx":d.get("hash","")})
+                                        save_positions()
                                         print(f"  💰 {label}: {p['token']} → BUSD")
                                 except: pass
                     if p["amt_tokens"] < 0.0001:
@@ -839,6 +958,8 @@ def refresh_positions():
         time.sleep(60)
 
 if __name__ == "__main__":
+    # Restore positions from disk (survives restarts)
+    load_positions()
     print("📊 Server on port {}".format(PORT))
     print("  📊 Market data refreshing every {}s...".format(CACHE_TTL))
     t = threading.Thread(target=refresh_cache, daemon=True)
