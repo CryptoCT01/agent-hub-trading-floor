@@ -145,6 +145,10 @@ MODE_CONFIG = {
 # Custom mode overrides (optional — user can customise per-mode)
 CUSTOM_MODE_CONFIG = {}  # {mode: {field: value, ...}}
 CUSTOM_CONFIG_FILE = "/tmp/strategy_custom.json"
+EARLY_EXIT_DAY = None  # Track which calendar day the +3% early exit tier is assigned to
+GUARANTEE_CLOSE_TIME = None  # Timestamp of last forced 24h guarantee close
+COMPETITION_START = None  # Set at startup: competition begins in 18h
+COMPETITION_MODE = False  # Toggle: ON = competition guarantee active; OFF = normal strategy only
 
 def get_mode_config(mode=None):
     """Return merged config for a mode: defaults overlaid with any custom overrides."""
@@ -245,10 +249,10 @@ def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
         max_pos = get_max_positions()
         if len(POSITIONS) >= max_pos:
             return False, f"Max {max_pos} positions reached ({STRATEGY_MODE} mode)"
-        # Per-token cap: max 2 positions of the same cryptocurrency
+        # Per-token cap: max 1 position of the same cryptocurrency
         same_count = sum(1 for p in POSITIONS if p["token"] == token)
-        if same_count >= 2:
-            return False, f"Max 2 positions of {token} reached — diversify"
+        if same_count >= 1:
+            return False, f"Max 1 position of {token} reached — diversify"
         cat_params = CATEGORY_PARAMS.get(cat, CATEGORY_PARAMS["blue_chip"])
         stop_pct = cat_params["stop"]
         now = time.time()
@@ -261,6 +265,13 @@ def add_position(token, address, entry_price_busd, amt_tokens, amt_busd, cat):
             "highest": entry_price_busd,
             "trailing_stop": entry_price_busd * (1 - stop_pct),
         })
+        # Mark first trade of the day with early-exit tier (+3% sell 50%)
+        global EARLY_EXIT_DAY
+        today_str = dt.utcnow().strftime("%Y-%m-%d")
+        if EARLY_EXIT_DAY != today_str:
+            EARLY_EXIT_DAY = today_str
+            POSITIONS[-1]["is_early_exit"] = True
+            print(f"  🔰 First trade of day: {token} gets +3% early exit tier")
         PROGRESS.append({"action":"OPEN","sym":token,"amt":f"{amt_busd}BUSD","time":now})
         save_positions()
         return True, f"Position opened: {amt_tokens:.4f} {token} for ${amt_busd:.2f}"
@@ -740,6 +751,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     })
             except Exception as e:
                 self.send_json({"success": False, "error": str(e)})
+        elif p == "/api/strategy/competition":
+            try:
+                qs = urllib.parse.urlparse(self.path).query
+                qp = urllib.parse.parse_qs(qs)
+                new_val = qp.get("on", [None])[0]
+                global COMPETITION_MODE
+                if new_val is not None:
+                    COMPETITION_MODE = new_val.lower() == "true" or new_val == "1"
+                self.send_json({"success": True, "competition_mode": COMPETITION_MODE, "competition_start": COMPETITION_START})
+            except Exception as e:
+                self.send_json({"success": False, "error": str(e)})
         elif p == "/api/strategy/execute":
             try:
                 with TOGGLES_LOCK:
@@ -1043,6 +1065,23 @@ def refresh_positions():
                         close_position(i, f"stop {pnl*100:.1f}%")
                         print(f"  🛑 STOP {p['token']} {pnl*100:.1f}%")
                         continue
+                    # +3% early-exit tier (only for first trade of the day, competition mode only)
+                    if COMPETITION_MODE and p.get("is_early_exit") and pnl >= 0.03 and not p.get("early_sold"):
+                        sell_early = p["amt_tokens"] * 0.50
+                        if sell_early > 0:
+                            try:
+                                r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"BUSD","amount":str(sell_early),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                                t = twak_swap_text(r)
+                                d = json.loads(t) if isinstance(t,str) else t
+                                if d.get("success") or d.get("hash"):
+                                    p["early_sold"] = True
+                                    p["amt_tokens"] -= sell_early
+                                    TRADE_COUNT += 1
+                                    ts = dt.utcnow().strftime("%d %b %H:%M")
+                                    TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→BUSD","dir":"+3%","amt":d.get("summary","sold"),"tx":d.get("hash","")})
+                                    save_positions()
+                                    print(f"  💰 +3% early exit: {p['token']} → BUSD (+3%)")
+                            except: pass
                     # Profit tiers
                     for pct, key, frac, label in [(0.08,"tier1_sold",0.25,"+8%"),(0.15,"tier2_sold",0.25,"+15%"),(0.25,"tier3_sold",0.25,"+25%")]:
                         if pnl >= pct and not p[key]:
@@ -1064,12 +1103,63 @@ def refresh_positions():
                     if p["amt_tokens"] < 0.0001:
                         close_position(i, "sold out")
         except: pass
+        # Competition-timed guarantee: close best performer if no close in window
+        try:
+            global GUARANTEE_CLOSE_TIME, COMPETITION_START
+            if not COMPETITION_MODE:
+                continue  # Not in competition mode — skip guarantee
+            now = time.time()
+            if COMPETITION_START is None or now < COMPETITION_START:
+                continue  # Competition hasn't started yet
+            # Determine when the next forced-close check is due
+            if GUARANTEE_CLOSE_TIME is None:
+                next_due = COMPETITION_START + 22 * 3600  # First check: 22h after competition start
+                cycle_hours = 22
+            else:
+                next_due = GUARANTEE_CLOSE_TIME + 24 * 3600  # Subsequent: every 24h
+                cycle_hours = 24
+            if now >= next_due:
+                # Check if any position closed naturally in this window
+                recent_closes = [e for e in PROGRESS if e.get("action") == "CLOSE" and (now - e.get("time", 0)) < cycle_hours * 3600]
+                if recent_closes:
+                    GUARANTEE_CLOSE_TIME = now  # Natural close covered us — reset cycle
+                else:
+                    # Snapshot positions under lock to find best performer
+                    pos_snapshot = []
+                    with POSITIONS_LOCK:
+                        for pi, pp in enumerate(POSITIONS):
+                            pos_snapshot.append({"idx": pi, "token": pp["token"], "entry": pp["entry_price"]})
+                    if pos_snapshot:
+                        with cache_lock:
+                            qd2 = cache.get("quotes", {})
+                        best_idx = -1
+                        best_pnl = -999.0
+                        for s in pos_snapshot:
+                            cur = None
+                            if isinstance(qd2, dict) and "data" in qd2:
+                                qq = qd2["data"].get(s["token"], {}).get("quote", {}).get("USD", {})
+                                if qq: cur = qq.get("price", 0)
+                            if cur and cur > 0:
+                                pp = (cur - s["entry"]) / s["entry"]
+                                if pp > best_pnl:
+                                    best_pnl = pp
+                                    best_idx = s["idx"]
+                        if best_idx >= 0:
+                            sym_t = POSITIONS[best_idx]["token"] if best_idx < len(POSITIONS) else "?"
+                            close_position(best_idx, "guarantee close")
+                            print(f"  ⏰ Guarantee close: {sym_t} (P&L {best_pnl*100:.1f}%)")
+                            GUARANTEE_CLOSE_TIME = now
+        except: pass
         time.sleep(60)
 
 if __name__ == "__main__":
     # Restore positions from disk (survives restarts)
     load_positions()
     load_custom_config()
+    # Competition starts 18 hours from now
+    COMPETITION_START = time.time() + 18 * 3600
+    cs = time.strftime("%b %d %H:%M UTC", time.gmtime(COMPETITION_START))
+    print(f"🏁 Competition starts in 18h ({cs}) — first guarantee check at +22h")
     print("📊 Server on port {}".format(PORT))
     print("  📊 Market data refreshing every {}s...".format(CACHE_TTL))
     t = threading.Thread(target=refresh_cache, daemon=True)

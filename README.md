@@ -1,5 +1,9 @@
 # Trading Floor v3.5 — CMC Buildathon + BNB HACK
 
+✅ Start server	cd ~/Desktop/trading-floor && python3 server.py
+✅ Open dashboard	http://localhost:8087
+
+
 **Built by @CryptoCT01** for the CoinMarketCap Agent Hub Creator Competition and BNB HACK: AI TRADING AGENT EDITION.
 
 A fully autonomous crypto trading agent with live dashboard, running on BSC.
