@@ -126,10 +126,101 @@ The server loads env vars from `/tmp/trading_env.json` (CMC_API_KEY, TWAK_ACCESS
 - [x] **Custom strategy settings** — Per-mode trade count + dollar amount customisable via ⚙️ ✅
 - [x] **Live status dots** — Toggle state visible at a glance on the LIVE pill ✅
 - [x] **Strategy Tracker** — HUD pill with live trade count + full station panel ✅
-
 ## Credentials (for reference — NOT in git)
 
+Located at:
 - `~/.twak/config.json` — TWAK access ID + HMAC secret
 - `/tmp/trading_env.json` — Runtime env vars loaded by server
 - `/tmp/strategy_custom.json` — Custom strategy overrides (persisted)
 - TWAK wallet: `0xC41828401DABEE1B7Ceaa0E4410601020dB39774`
+
+---
+
+## 🚧 Unfinished: Trade Panel ▲ Expand Upgrade
+
+### What was attempted
+
+The **▲ expand button** on the left-side trade box (opens `function x()`) was redesigned to be a richer swap panel. The original was basic — just a title + FROM/TO/AMOUNT labels + input + SWAP button.
+
+The intended redesign:
+
+```
+┌─────────────────────────┐
+│   ⚡ MANUAL SWAP        │
+│     BNB → BUSD          │
+│                         │
+│ [25%][50%][75%][MAX]    │
+│                         │
+│  [    0.001    ]        │
+│  Balance: 0.0118 BNB    │
+│                         │
+│  RATE      $585.64      │
+│  USD VALUE $0.57        │
+│                         │
+│  [    ↻ SWAP     ]      │
+└─────────────────────────┘
+```
+
+**New elements added:**
+- `tp-head` / `tp-title` / `tp-pair` — styled header with BNB → BUSD pair display (gold/cyan)
+- `tp-quick` / `tp-qbtn` — 25%/50%/75%/MAX quick-amount buttons
+- `tp-bal` — live balance display ("Balance: 0.0118 BNB")
+- RATE row — live price of the FROM token from `LIVE_QUOTES`
+- Keep existing USD VALUE row and SWAP button
+- `qAmt(pct)` function — calculates `bnbBal * percentage` and populates the input
+
+### What broke
+
+The change introduced a **JavaScript syntax error** that prevented the entire `<script>` block from executing. Symptoms:
+- Isometric trading floor grid did not render (blank center area)
+- `selectStation` was undefined (all JS after the error point failed)
+- Browser console showed empty JS error (character-level issue)
+
+**Root cause:** The `p.innerHTML` string (line 624) had an extra trailing backslash before the closing quote. The file ended with 3 backslashes followed by `";` where it should have had 1 backslash followed by `";`.
+
+Specifically:
+- WRONG (broke the JS): `</button>\\\";` (3 backslashes)
+- CORRECT (works): `</button>\";` (1 backslash)
+
+The rule for the very end of the string:
+- `\"` = escaped quote inside the JS string (produces `"` in the HTML attribute)
+- `"` = closes the JavaScript string
+- `;` = ends the statement
+
+So the file should read: `...onclick=\\"m();v()\\">↻ SWAP</button>\";`
+
+
+### Why it happened
+
+The escaping gets complex because:
+1. The `p.innerHTML` string uses `\"` for HTML attribute delimiters inside the JavaScript string
+2. The string is inside an HTML file, so everything is in the same context
+3. The patch tool applied a string that had `\\\"` which resolved to `\"` in the file — but the original code used `\"` directly
+4. When editing inline HTML-in-JS-in-HTML, one extra/missing backslash breaks the whole script silently
+
+### What the next session needs to do
+
+1. **Restore from git** before attempting: `git checkout HEAD -- trading-dashboard.html`
+2. The CSS classes already exist in `<style>` (`.tp-head`, `.tp-title`, `.tp-pair`, `.tp-pair-from`, `.tp-pair-arrow`, `.tp-pair-to`, `.tp-quick`, `.tp-qbtn`, `.tp-bal` — added in v3.5)
+3. Replace the `p.innerHTML` string in `function x()` (line ~624) with the new HTML (see design above)
+4. Update `function v()` to populate the new elements (`_pf`, `_pt`, `_bal`, `_rate`) instead of the old ones (`_0`, `_1`, `_2`)
+5. Add `function qAmt(pct)` for the quick-amount buttons
+6. **CRITICAL — the exact ending matters.** The last characters of the file should be:
+   `...onclick=\\"m();v()\\">↻ SWAP</button>\";`
+   - `\\"` = escaped quote for the HTML onclick attribute
+   - `"` = closes the JavaScript string
+   - `;` = ends the statement
+   One extra backslash before the final quote will break the entire page silently.
+7. Validate JS syntax before restarting:
+   ```
+   node -e "new Function(require('fs').readFileSync('trading-dashboard.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1]); console.log('OK')"
+   ```
+8. The `qAmt` function references `bnbBal` global which is populated by `fetchWallet()` — ensure wallet has been fetched before panel opens
+
+### Verifying success
+
+- The isometric grid renders with all 22 station tiles
+- Clicking ▲ on the trade box opens the styled panel
+- Quick-amount buttons fill in the correct percentage of BNB balance
+- RATE shows the live price of the FROM token
+- SWAP button still executes the trade correctly
