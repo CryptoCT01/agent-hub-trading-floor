@@ -128,7 +128,6 @@ Server loads env vars from `/tmp/trading_env.json` (CMC API key + TWAK credentia
 trading-floor/
 ├── server.py               # Python backend (port 8087)
 ├── trading-dashboard.html  # Single-page dashboard (served by server.py)
-├── HANDOVER.md             # Competition handover notes (v3.69)
 ├── README.md               # This file
 └── LICENSE                 # GPL v3
 ```
