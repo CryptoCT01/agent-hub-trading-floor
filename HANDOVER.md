@@ -1,4 +1,4 @@
-# Trading Floor v3.5 — Competition Handover
+# Trading Floor v3.69 — Competition Handover
 
 Built for the **CoinMarketCap Agent Hub Creator Competition** + **BNB HACK: AI TRADING AGENT EDITION**
 
@@ -12,7 +12,7 @@ Built for the **CoinMarketCap Agent Hub Creator Competition** + **BNB HACK: AI T
 Our original version (V1) was officially featured and reposted by CoinMarketCap on X/Twitter:
 [https://x.com/CoinMarketCap/status/2067785230740816200](https://x.com/CoinMarketCap/status/2067785230740816200)
 
-We are now on V3.5 — miles ahead from that original version.
+We are now on V3.69 — miles ahead from that original version.
 
 ---
 
@@ -49,16 +49,26 @@ We are now on V3.5 — miles ahead from that original version.
 - Changed from max 2 → max 1 position per token
 - Updated both server.py logic and dashboard ABOUT text
 
-### 🖥️ Splash Screen Updates
+### 🧹 Late-Night Fixes & Polish (June 21, 00:13–00:25 UTC)
+- **RLock deadlock fix** — Changed `threading.Lock()` → `threading.RLock()` for `POSITIONS_LOCK` to prevent background monitor deadlocks
+- **Immediate wallet refresh** — Extracted `update_wallet_cache()` from slow 60s background loop; wallet now refreshes instantly after every manual close or close-all
+- **Stats reset endpoint** — New `/api/stats/reset` + orange ⟳ RESET button on dashboard wallet bar; clears trade history, count, progress, resets initUsd to current balance for a clean competition start
 - Added **TWAK** pill to feature row (5th pill, cyan)
 - Added **Trust Wallet** to footer credit line
 - Reordered hashtag pills: `#CMCAgentHub | @CryptoCTO1 | @coinmarketcap`
 - @CryptoCTO1 now **purple** to stand out
 - 69 ASSETS changed to **orange** (was cyan, freed cyan for TWAK)
 
+### 🎨 Splash & UI Polish (v3.69 — June 21, 07:00–08:00 UTC)
+- **🏆 CMC Featured badge** — Gold badge on splash showing V1 was featured by CoinMarketCap
+- **V3.69 version label** — Cyan badge next to TRADING FLOOR title
+- **⏱ Colored countdown timer** — Gold/cyan alternating seconds, gold pill border; auto-switches to competition countdown after submission closes
+- **✨ Pill animations** — Staggered pulse + brightness on feature pills
+- **📝 Station tile tooltips** — All 22 stations show live data on hover (F&G, BTC price, position counts, etc.)
+
 ---
 
-## Key Fixes & Features Added (v3.4 → v3.5)
+## Key Fixes & Features Added (v3.4 → v3.69)
 
 1. **TWAK risk check** — Replaced non-existent `check_token_risk` with `get_token_price` (403 fix)
 2. **TWAK credentials** — Updated `/tmp/trading_env.json` with correct keys from `~/.twak/config.json`
@@ -76,10 +86,14 @@ We are now on V3.5 — miles ahead from that original version.
 14. **PORTFOLIO label** — Wallet expanded view says PORTFOLIO instead of TOTAL, rendered in gold
 15. **Smaller control buttons** — Ctrl buttons shrunk ~8% (0.65rem→0.6rem, padding 4px14px→3px10px) to prevent overlapping the wallet pill
 16. **🏁 Competition Mode** — COMP toggle with +3% early-exit + 22h/24h rolling guarantee close
-17. **3D Tile Upgrade** — Stepped shadows, neon pulse, category glow, floor spotlight, directional lighting
-18. **Real Charts** — ETH/SOL/UNI/LINK get real price history (was synthetic straight lines)
-19. **Splash Screen** — Added TWAK pill, Trust Wallet credit, reordered/colored hashtags
-20. **Per-token cap** — Max 2 → max 1 position
+|17. **3D Tile Upgrade** — Stepped shadows, neon pulse, category glow, floor spotlight, directional lighting
+|18. **Real Charts** — ETH/SOL/UNI/LINK get real price history (was synthetic straight lines)
+|19. **Splash Screen** — Added TWAK pill, Trust Wallet credit, reordered/colored hashtags
+|20. **Per-token cap** — Max 2 → max 1 position
+|21. **RLock deadlock fix** — `threading.Lock()` → `threading.RLock()` prevents background monitor deadlock
+|22. **Immediate wallet refresh** — `update_wallet_cache()` extracted; wallet refreshes right after manual close/close-all
+|23. **Stats reset endpoint** — `/api/stats/reset` + ⟳ RESET button on dashboard; clears history, count, progress, resets initUsd
+|24. **v3.69 splash polish** — CMC Featured badge, V3.69 version label, pill animations, live countdown timer with alternating gold/cyan color, station-rich tooltips
 
 ---
 
@@ -168,7 +182,11 @@ The server loads env vars from `/tmp/trading_env.json` (CMC_API_KEY, TWAK_ACCESS
 - [x] **Real charts** — BTC/ETH/SOL/UNI/LINK price history
 - [x] **3D tiles** — Neon glow, stepped shadow, directional lighting
 - [x] **Per-token cap** — Max 1 position per cryptocurrency
-- [x] **GitHub: v3.5 tagged**
+- [x] **GitHub: v3.69 tagged**
+- [x] **RLock deadlock fix** — `threading.RLock()` prevents background position monitor deadlock
+- [x] **Immediate wallet refresh** — Wallet cache updates instantly after manual close/close-all
+- [x] **Stats reset endpoint** — ⟳ RESET button clears trade history + resets initUsd
+- [x] **v3.69 splash** — CMC featured badge, V3.69 label, animated pills, countdown timer, rich tooltips on all 22 stations
 
 ---
 

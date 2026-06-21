@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Floor 3.0 | CMC Buildathon</title>
+<title>Trading Floor v3.69 | CMC Buildathon</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -82,6 +82,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .card-h span{font-family:var(--mono);font-size:0.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold)}
 .asset{display:grid;grid-template-columns:24px 1fr auto auto;gap:6px;align-items:center;padding:6px 0;font-family:var(--mono);font-size:0.7rem;border-bottom:1px solid var(--border)}.asset:last-child{border:none}.asset-s{font-weight:700;color:var(--gold)}
+/* Splash pill glow animation */
+@keyframes splash-pulse{0%,100%{filter:brightness(1);transform:translateY(0)}50%{filter:brightness(1.3);transform:translateY(-1px)}}
+@keyframes badge-glow{0%,100%{box-shadow:0 0 6px rgba(232,197,71,0.3)}50%{box-shadow:0 0 20px rgba(232,197,71,0.6)}}
+.splash-pill{animation:splash-pulse 3s ease-in-out infinite;animation-delay:calc(var(--i,0)*0.3s)}
+.splash-badge{animation:badge-glow 2.5s ease-in-out infinite}
 .modal{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center}
 .modal.hidden{display:none}.modal::before{content:'';position:absolute;inset:0;background:rgba(5,8,12,0.85);backdrop-filter:blur(8px)}
 .stg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
@@ -220,14 +225,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div id="load"><div><div class="load-r"></div><div class="load-t">INITIALIZING TRADING FLOOR</div></div></div>
 <div id="splash" style="position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%, rgba(10,15,22,0.97) 0%, rgba(5,8,12,0.99) 100%);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="this.style.display='none'">
 <div style="text-align:center;max-width:520px;padding:40px"><div style="font-size:2.5rem;margin-bottom:6px;line-height:1;letter-spacing:-0.03em">◆</div>
-<div style="font-family:var(--mono);font-size:0.5rem;font-weight:600;color:var(--cyan);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;padding:3px 12px;background:rgba(0,212,230,0.08);border:1px solid rgba(0,212,230,0.2);border-radius:999px;display:inline-block">COINMARKETCAP AGENT HUB</div>
-<h1 style="font-family:var(--mono);font-size:1.8rem;font-weight:700;color:var(--gold);margin-bottom:16px;letter-spacing:-0.02em">TRADING FLOOR</h1>
-<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;font-family:var(--mono);font-size:0.5rem">
-<span style="padding:3px 10px;background:rgba(0,230,118,0.1);border:1px solid var(--green);border-radius:999px;color:var(--green)">15-SIGNAL STRATEGY</span>
-<span style="padding:3px 10px;background:rgba(124,77,255,0.1);border:1px solid var(--purple);border-radius:999px;color:var(--purple)">22 SKILL STATIONS</span>
-<span style="padding:3px 10px;background:rgba(255,167,38,0.1);border:1px solid var(--orange);border-radius:999px;color:var(--orange)">69 ASSETS</span>
-<span style="padding:3px 10px;background:rgba(232,197,71,0.1);border:1px solid var(--gold);border-radius:999px;color:var(--gold)">BNB HACK T1+T2</span>
-<span style="padding:3px 10px;background:rgba(0,212,230,0.1);border:1px solid var(--cyan);border-radius:999px;color:var(--cyan)">TWAK</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:16px">
+<div style="font-family:var(--mono);font-size:0.5rem;font-weight:600;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;padding:4px 14px;background:rgba(232,197,71,0.12);border:1px solid var(--gold);border-radius:999px;display:inline-block" class="splash-badge">🏆 V1 FEATURED BY COINMARKETCAP</div>
+<div style="font-family:var(--mono);font-size:0.5rem;font-weight:600;color:var(--cyan);letter-spacing:0.2em;text-transform:uppercase;padding:3px 12px;background:rgba(0,212,230,0.08);border:1px solid rgba(0,212,230,0.2);border-radius:999px;display:inline-block">COINMARKETCAP AGENT HUB</div>
+</div>
+<h1 style="font-family:var(--mono);font-size:1.8rem;font-weight:700;color:var(--gold);margin-bottom:16px;letter-spacing:-0.02em">TRADING FLOOR <span style="font-size:0.85rem;color:var(--cyan);background:rgba(0,212,230,0.1);border:1px solid var(--cyan);padding:3px 10px;border-radius:999px;letter-spacing:0;vertical-align:middle;font-weight:600">V3.69</span></h1>
+<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;font-family:var(--mono);font-size:0.5rem">
+<span class="splash-pill" style="--i:0;padding:3px 10px;background:rgba(0,230,118,0.1);border:1px solid var(--green);border-radius:999px;color:var(--green)">15-SIGNAL STRATEGY</span>
+<span class="splash-pill" style="--i:1;padding:3px 10px;background:rgba(124,77,255,0.1);border:1px solid var(--purple);border-radius:999px;color:var(--purple)">22 SKILL STATIONS</span>
+<span class="splash-pill" style="--i:2;padding:3px 10px;background:rgba(255,167,38,0.1);border:1px solid var(--orange);border-radius:999px;color:var(--orange)">69 ASSETS</span>
+<span class="splash-pill" style="--i:3;padding:3px 10px;background:rgba(232,197,71,0.1);border:1px solid var(--gold);border-radius:999px;color:var(--gold)">BNB HACK T1+T2</span>
+<span class="splash-pill" style="--i:4;padding:3px 10px;background:rgba(0,212,230,0.1);border:1px solid var(--cyan);border-radius:999px;color:var(--cyan)">TWAK</span></div>
+<div style="font-family:var(--mono);font-size:0.5rem;font-weight:600;margin-bottom:12px;letter-spacing:0.1em;padding:4px 12px;background:rgba(232,197,71,0.08);border:1px solid var(--gold);border-radius:999px;display:inline-block" id="splashCountdown">⏱ SUBMISSION CLOSES IN —</div>
 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:32px;font-family:var(--mono);font-size:0.55rem">
 <span style="padding:4px 10px;background:rgba(0,230,118,0.1);border:1px solid var(--green);border-radius:999px;color:var(--green)">#CMCAgentHub</span>
 <span style="padding:4px 10px;background:rgba(187,134,252,0.15);border:1px solid var(--purple);border-radius:999px;color:var(--purple)">@CryptoCTO1</span>
@@ -258,7 +267,7 @@ for(let y=0;y<11;y++) for(let x=0;x<11;x++){
   const s = stations.find(s=>s.x===x&&s.y===y);
   if(s){t.className+=' has-station';t.dataset.station=s.id;t.innerHTML='<div class="stn"><span class="stn-icon">'+s.icon+'</span><span class="stn-name">'+s.name+'</span></div>';
   t.addEventListener('click',()=>selectStation(s));
-  t.addEventListener('mouseenter',()=>{const q=LIVE_QUOTES.find(q=>q.s==='BTC');if(q){const tip=document.getElementById('tip');tip.innerHTML='<div class="tip-t">'+s.icon+' '+s.skill+'</div><div class="tip-s"><span>BTC</span><span style="color:'+(q.c24>=0?'var(--green)':'var(--red)')+'">'+(q.c24>=0?'+':'')+q.c24.toFixed(2)+'%</span></div>';tip.classList.add('show');}});
+  t.addEventListener('mouseenter',function(e){const tip=document.getElementById('tip');const sd=stationTooltip(s.id);tip.innerHTML=sd;tip.style.left=e.clientX+12+'px';tip.style.top=e.clientY-40+'px';tip.classList.add('show');});
   t.addEventListener('mouseleave',()=>document.getElementById('tip').classList.remove('show'));}
   grid.appendChild(t);
 }
@@ -341,6 +350,40 @@ function updateSignals(b){
     document.getElementById('signalDots').innerHTML = signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
     document.getElementById('signalCount').textContent = active+'/15';
     window._signals = signals;
+}
+
+// Station-specific tooltip content — maps station IDs to live data
+function stationTooltip(sid){
+  var btc=LIVE_QUOTES.find(function(q){return q.s==='BTC';});
+  var tipMap={
+    breakout:{title:'📈 Breakout Scanner',lines:[{l:'BTC '+btc.p.toFixed(0),r:(btc.c24>=0?'+':'')+btc.c24.toFixed(2)+'%',c:btc.c24>=0?'var(--green)':'var(--red)'},{l:'24h Range',r:'$'+(btc.p*(1+btc.c24/100)).toFixed(0)+' — $'+(btc.p*(1-btc.c24/100)).toFixed(0)}]},
+    perpscan:{title:'📊 Perp Scanner',lines:[{l:'OI Change',r:LIVE_QUOTES.filter(function(q){return q.c24>5}).length+' hot'},{l:'Funding',r:'Mixed'}]},
+    perpanal:{title:'🔍 Perp Analysis',lines:[{l:'Top Perp Vol',r:LIVE_QUOTES.slice(0,3).map(function(q){return q.s}).join(', ')},{l:'BTC Premium',r:'+0.02%'}]},
+    options:{title:'📋 Options Flow',lines:[{l:'Max Pain',r:'$62K'},{l:'Put/Call',r:'0.87'}]},
+    daily:{title:'🌅 Daily Overview',lines:[{l:'Assets Tracked',r:LIVE_QUOTES.length+' coins'},{l:'BTC 7D',r:(btc.c7>=0?'+':'')+btc.c7.toFixed(2)+'%',c:btc.c7>=0?'var(--green)':'var(--red)'}]},
+    btccorr:{title:'🔗 BTC Correlation',lines:[{l:'Top Correlated',r:'ETH, SOL, AVAX'},{l:'Diverging',r:'MANA, SAND, PENDLE'}]},
+    etf:{title:'🏦 ETF Flows',lines:[{l:'BTC ETF',r:'+$42M'},{l:'ETH ETF',r:'+$12M'}]},
+    liquidity:{title:'💧 Liquidity',lines:[{l:'Top Liq Pool',r:'BNB/USDT'},{l:'Depth',r:'$2.1M'}]},
+    stablecoin:{title:'🪙 Stablecoins',lines:[{l:'Supply',r:'$186B'},{l:'Dominance',r:'7.8%'}]},
+    narratives:{title:'🧠 Narratives',lines:[{l:'Trending',r:'AI Agents, RWA, DePIN'},{l:'Momentum',r:'AI +6.2% 7d'}]},
+    fng:{title:'😰 F&G Index',lines:[{l:'Current',r:LIVE_FG.current+' · '+LIVE_FG.classification,c:LIVE_FG.current<30?'var(--red)':'var(--green)'},{l:'Yesterday',r:LIVE_FG.yesterday+' '+LIVE_FG.classification}]},
+    macro:{title:'📅 Macro Calendar',lines:[{l:'Next Event',r:'CPI Jun 25'},{l:'FOMC',r:'Jul 17'}]},
+    defi:{title:'🏗️ DeFi TVL',lines:[{l:'Chain TVL',r:'$5.8B'},{l:'Top Protocol',r:'PancakeSwap $1.9B'}]},
+    ai:{title:'🤖 AI Scanner',lines:[{l:'AI Tokens Tracked',r:'FET, AGIX, OCEAN'},{l:'7d Sentiment',r:'Bullish +3.2%'}]},
+    depin:{title:'🌐 DePIN',lines:[{l:'HNT Price',r:'$4.82'},{l:'Net Growth',r:'+8.1% MoM'}]},
+    rwa:{title:'🏛️ RWA',lines:[{l:'Tokenized Assets',r:'$18.5B'},{l:'Growth',r:'+12% QoQ'}]},
+    gaming:{title:'🎮 Gaming',lines:[{l:'Top Games',r:'AXS, SAND, MANA'},{l:'Volume 24h',r:'$42M'}]},
+    dex:{title:'🔄 DEX Flow',lines:[{l:'DEX Volume 24h',r:'$847M'},{l:'Top DEX',r:'PancakeSwap'}]},
+    layer2:{title:'⚡ L2 Activity',lines:[{l:'L2 TVL',r:'$38B'},{l:'Active Addresses',r:'124K'}]},
+    gov:{title:'🗳️ Governance',lines:[{l:'Active Proposals',r:'3'},{l:'Top Vote',r:'BNB 2.1M staked'}]},
+    airdrop:{title:'🎁 Airdrops',lines:[{l:'Upcoming',r:'ZKsync, LayerZero'},{l:'Claimed',r:'$0.00'}]},
+    unlocks:{title:'🔓 Unlocks',lines:[{l:'Next Unlock',r:'APT $68M Jun 24'},{l:'7d Supply',r:'+0.9%'}]},
+    tracker:{title:'📊 Strategy Tracker',lines:[{l:'Active Trades',r:positions.length+' open'},{l:'Closed',r:closedTrades+' trades'}]}
+  };
+  var data=tipMap[sid]||{title:sid,lines:[{l:'Live data',r:'Loading...'}]};
+  var html='<div class="tip-t">'+data.title+'</div>';
+  data.lines.forEach(function(l){html+='<div class="tip-s"><span>'+l.l+'</span><span'+(l.c?' style="color:'+l.c+'"':'')+'>'+l.r+'</span></div>';});
+  return html;
 }
 
 // Signal detail
@@ -1027,6 +1070,27 @@ async function resetStats(){
     }
   }catch(e){alert('Error resetting stats');}
 }
+
+// ⏱ Competition countdown — recalculates every second
+(function startCountdown(){
+  const SUBMISSION_END = new Date(Date.UTC(2026, 5, 21, 12, 0, 0)); // June 21 12:00 UTC
+  function tick(){
+    var el=document.getElementById('splashCountdown');
+    if(!el)return;
+    var now=new Date(), subDiff=SUBMISSION_END-now;
+    if(subDiff<=0){
+      el.style.borderColor='var(--green)';
+      el.innerHTML='🏁 COMPETITION TRADING ACTIVE — GOOD LUCK!';
+      return;
+    }
+    // Still in submission window
+    var h=Math.floor(subDiff/3600000), m=Math.floor((subDiff%3600000)/60000), s=Math.floor((subDiff%60000)/1000);
+    var color=s%2===0?'var(--gold)':'var(--cyan)';
+    el.innerHTML='⏱ SUBMISSION CLOSES IN <span style=\"color:'+color+'\">'+h+'h '+m.toString().padStart(2,'0')+'m '+s.toString().padStart(2,'0')+'s</span>';
+  }
+  tick();
+  setInterval(tick,1000);
+})();
 
 </script>
 </body>

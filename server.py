@@ -703,7 +703,7 @@ def scan_strategy():
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        global TRADE_COUNT, TRADE_HISTORY
+        global TRADE_COUNT, TRADE_HISTORY, PROGRESS
         p = urllib.parse.urlparse(self.path).path
         if p == "/api/global":
             self.send_json(cache.get("global", {"error": "loading"}))
@@ -1033,7 +1033,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/stats/reset":
             """Reset all trading stats: trade history, count, progress, initUsd."""
             try:
-                global TRADE_HISTORY, TRADE_COUNT, PROGRESS
                 # Get current wallet balance to set as new initUsd
                 update_wallet_cache()
                 w = cache.get("wallet", {"usd": 49.00})

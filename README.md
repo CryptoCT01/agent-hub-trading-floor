@@ -1,9 +1,9 @@
-# Trading Floor v3.5 — CMC Buildathon + BNB HACK
+# Trading Floor v3.69 — CMC Buildathon + BNB HACK
 
 > 🚀 **V1 Official Featured & Reposted by CoinMarketCap**  
 > [View the Repost](https://x.com/CoinMarketCap/status/2067785230740816200)
 
-Welcome to V3.5: A fully autonomous crypto trading agent with live dashboard, running on BSC. Expanded significantly since our initial spotlight to feature deep on-chain integration, institutional-grade risk controls, and a Bloomberg-terminal grade command center.
+Welcome to V3.69: A fully autonomous crypto trading agent with live dashboard, running on BSC. Expanded significantly since our initial spotlight to feature deep on-chain integration, institutional-grade risk controls, and a Bloomberg-terminal grade command center.
 
 ---
 
@@ -128,9 +128,8 @@ Server loads env vars from `/tmp/trading_env.json` (CMC API key + TWAK credentia
 trading-floor/
 ├── server.py               # Python backend (port 8087)
 ├── trading-dashboard.html  # Single-page dashboard (served by server.py)
-├── HANDOVER.md             # Competition handover notes (v3.5)
+├── HANDOVER.md             # Competition handover notes (v3.69)
 ├── README.md               # This file
-├── twitter-thread-v4.txt   # Twitter announcement thread
 └── LICENSE                 # GPL v3
 ```
 
@@ -159,7 +158,7 @@ trading-floor/
 - [x] Real chart history for 5 assets
 - [x] 22 isometric skill stations with neon glow
 - [x] Per-token cap (max 1)
-- [x] GitHub: v3.5 tagged
+- [x] GitHub: v3.69 tagged
 
 ---
 
