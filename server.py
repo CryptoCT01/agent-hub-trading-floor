@@ -790,6 +790,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self.send_json({"executed":False,"reason":f"Max {max_pos} positions reached ({STRATEGY_MODE} mode)"})
                         return
                     pick = scan["candidate"]
+                    # Per-token cap: max 1 position of the same token
+                    with POSITIONS_LOCK:
+                        if any(p["token"] == pick["s"] for p in POSITIONS):
+                            self.send_json({"executed":False,"reason":f"Max 1 position of {pick['s']} reached — diversify","candidate":pick['s'],"signals":score})
+                            return
                     sym = pick["s"]
                     cat = get_category(sym)
                     busd_amt = score_to_busd(score, max_sc, cat)
@@ -973,7 +978,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if idx < 0 or idx >= len(POSITIONS):
                         self.send_json({"executed": False, "reason": "Invalid position index"}); return
                     pos = POSITIONS[idx]
-                    sym, addr, amt_t = pos["token"], pos["address"], pos["amt_tokens"]
+                    sym, addr = pos["token"], pos["address"]
+                # Query full wallet balance of this token
+                try:
+                    bal_res = twak_jsonrpc("token_balance", {"chain":"bsc","address":"0xC41828401DABEE1B7Ceaa0E4410601020dB39774","tokenAddress":addr})
+                    bal_txt = bal_res.get("result",{}).get("content",[{}])[0].get("text","")
+                    amt_t = float(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+                except:
+                    amt_t = pos["amt_tokens"]  # fallback to tracked amount
                 if amt_t < 0.0001:
                     close_position(idx, "closed")
                     self.send_json({"executed": True, "reason": "Empty position closed"})
@@ -1007,7 +1019,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     with POSITIONS_LOCK:
                         if not POSITIONS: break
                         pos = POSITIONS[0]
-                        sym, addr, amt_t = pos["token"], pos["address"], pos["amt_tokens"]
+                        sym, addr = pos["token"], pos["address"]
+                    # Query full wallet balance of this token
+                    try:
+                        bal_res = twak_jsonrpc("token_balance", {"chain":"bsc","address":"0xC41828401DABEE1B7Ceaa0E4410601020dB39774","tokenAddress":addr})
+                        bal_txt = bal_res.get("result",{}).get("content",[{}])[0].get("text","")
+                        amt_t = float(bal_txt.split('"available": "')[1].split('"')[0]) / 1e18 if '"available"' in bal_txt else 0
+                    except:
+                        amt_t = pos["amt_tokens"]  # fallback
                     if amt_t < 0.0001:
                         close_position(0, "closed")
                         results.append({"token": sym, "status": "empty"})
