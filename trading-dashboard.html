@@ -206,7 +206,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 <div class="stat" id="livePill" style="flex-direction:row;border-color:var(--green);background:rgba(0,230,118,0.08);cursor:pointer;position:relative;gap:8px" onclick="togglePanel()"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:var(--mono);font-size:0.55rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--green);line-height:1;margin-bottom:1px">API TOGGLES</span><div style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite"></span><span style="font-family:var(--mono);font-size:0.55rem;color:var(--green)" id="uptime">LIVE</span><span style="font-family:var(--mono);font-size:0.45rem;color:var(--fg3);margin-left:2px" id="liveTime"></span></div></div><div style="display:flex;flex-direction:column;align-items:center;gap:1px;margin-left:2px"><span style="font-size:0.85rem;line-height:1;color:var(--fg)">⏻</span><div id="liveDots" class="live-dots"><span class="live-dot" data-toggle="api" style="background:var(--green)"></span><span class="live-dot" data-toggle="non_essential" style="background:var(--green)"></span><span class="live-dot" data-toggle="trading" style="background:var(--green)"></span></div></div></div>
 <div id="togglePanel" style="display:none;position:absolute;top:42px;right:20px;z-index:999;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px;width:280px;font-family:var(--mono);box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
 </div></div>
-<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option selected>BUSD</option><option>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" id="compBottomPill" onclick="toggleCompPanel()" style="display:none;border-color:var(--gold);padding:4px 10px;gap:4px;min-height:26px"><span style="font-size:0.65rem;line-height:1">🏁</span><span id="compBottomLabel" style="font-weight:600;font-size:0.55rem;color:var(--fg)">COMP</span><span id="compBottomStatus" style="font-size:0.5rem;color:var(--fg)">OFF</span></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn" id="settingsBtn" onclick="toggleSettingsPanel()" style="font-size:0.65rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--fg2);padding:3px 8px;border-radius:8px;font-family:var(--mono);transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg2)'">⚙️</button><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
+<div class="hud-bottom"><div style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:6px"><div class="trade-box" id="tradeBox"><select id="tradeFrom" onchange="u()"><option>BNB</option><option>BUSD</option><option selected>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option></select><input id="tradeAmt" value="1" oninput="u()"><span class="trade-arrow" id="rotateBtn" style="cursor:pointer;font-size:0.7rem" onclick="rotatePair()">⇄</span><select id="tradeTo" onchange="u()"><option>BUSD</option><option selected>USDT</option><option>USDC</option><option>DAI</option><option>ETH</option><option>BNB</option></select><span class="trade-usd" id="tradeUsd">~$1.00</span><button class="trade-btn swap" id="swapBtn">SWAP</button><button class="trade-expand" onclick="x()">▲</button></div><div class="wallet-pill" id="compBottomPill" onclick="toggleCompPanel()" style="display:none;border-color:var(--gold);padding:4px 10px;gap:4px;min-height:26px"><span style="font-size:0.65rem;line-height:1">🏁</span><span id="compBottomLabel" style="font-weight:600;font-size:0.55rem;color:var(--fg)">COMP</span><span id="compBottomStatus" style="font-size:0.5rem;color:var(--fg)">OFF</span></div><div class="wallet-pill" onclick="w()"><span class="wl-dot"></span><span class="wl-bal" id="pBal">0 BNB</span><span class="wl-usd" id="pUsd">$0</span><span class="wl-expand">▲</span></div></div><div class="ctrl"><button class="ctrl-btn" id="fg-btn">😰 F&G</button><button class="ctrl-btn gold" id="ai-btn">🤖 AGENT</button><span class="ctrl-btn" style="cursor:default;color:var(--fg3);font-size:0.5rem">|</span><button class="ctrl-btn" id="settingsBtn" onclick="toggleSettingsPanel()" style="font-size:0.65rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--fg2);padding:3px 8px;border-radius:8px;font-family:var(--mono);transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg2)'">⚙️</button><button class="ctrl-btn mode-btn" data-mode="risky" onclick="setMode('risky')">🔴 RISKY</button><button class="ctrl-btn mode-btn gold" data-mode="moderate" onclick="setMode('moderate')">🟡 MODERATE</button><button class="ctrl-btn mode-btn" data-mode="ultra_safe" onclick="setMode('ultra_safe')">🟢 ULTRA SAFE</button></div></div><div class="ticker" id="ticker"><div class="ticker-inner"><span class="ti">➳ Loading...</span></div></div></div></div>
 <div id="compPanel" style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:300;background:var(--bg2);border:1px solid var(--purple);border-radius:12px;padding:14px;width:300px;font-family:var(--mono);box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
 <div class="floor" id="floor"></div>
 <div class="wallet-bar" id="walletBar"><span class="wl-dot"></span><span class="wl-bal" id="wlBal">— BNB</span><span class="wl-pnl" id="wlPnl">+$0.00</span><span class="wl-tx" id="wlTx">3 trades ⏎</span><button onclick="fetchWallet()">↻</button><button onclick="resetStats()" style="font-size:0.5rem;background:none;border:1px solid var(--orange);color:var(--orange);padding:2px 6px;border-radius:6px;cursor:pointer;font-family:var(--mono);transition:.2s" onmouseover="this.style.background='var(--orange)';this.style.color='#000'" onmouseout="this.style.background='none';this.style.color='var(--orange)'">⟳ RESET</button></div>
@@ -324,35 +324,17 @@ function ticker(){
   updateSignals(b);
 }
 function updateSignals(b){
-    if(!b) return;
-    const btc7d = b.c7 || 0;
-    const btc24 = b.c24 || 0;
-    const regimeScore = LIVE_FG.current < 30 ? 3 : LIVE_FG.current < 50 ? 2 : 1;
-    const regimeLabel = LIVE_FG.current < 30 ? 'Extreme Fear' : LIVE_FG.current < 50 ? 'Fear' : 'Neutral';
-    const signals = [
-      {n:'MOMENTUM', s:btc7d>5?'on':'off', v:btc7d>5?3:btc7d>2?2:0, d:btc7d.toFixed(1)+'% 7d'},
-      {n:'TECHNICAL', s:btc24>-2?'on':'off', v:btc24>0?2:1, d:'BTC '+(btc24>=0?'+':'')+btc24.toFixed(2)+'% 24h'},
-      {n:'ON-CHAIN', s:'on', v:2, d:'Vol '+LIVE_QUOTES.length+' assets'},
-      {n:'DERIVATIVES', s:btc24>-3?'on':'off', v:1, d:'OI+Funding combo'},
-      {n:'REGIME', s:LIVE_FG.current<50?'on':'off', v:1, d:'F&G '+LIVE_FG.current+' ('+regimeLabel+')'},
-      {n:'NARRATIVE', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:btc7d>5?'Bullish momentum':'Range bound'},
-      {n:'MKT STRUCT', s:btc24>btc7d?'on':'off', v:1, d:'BTC 24h '+(btc24>=0?'+':'')+btc24.toFixed(1)+'%'},
-      {n:'MACRO', s:'on', v:1, d:LIVE_QUOTES.length+' assets · '+LIVE_FG.classification},
-      {n:'NEWS SENT', s:'on', v:btc7d>3?2:1, d:'Via CMC News API'},
-      {n:'FUNDAMENTAL', s:'on', v:1, d:'Token metadata score'},
-      {n:'REL STR BTC', s:btc7d>3?'on':'off', v:btc7d>5?2:1, d:'RS '+(btc7d-btc24).toFixed(1)+'% vs BTC'},
-      {n:'VOL SURGE', s:btc24>-1?'on':'off', v:1, d:'Volume growing + high rel volume'},
-      {n:'CROSS RS', s:btc7d>btc24?'on':'off', v:btc7d>5?2:1, d:'vs BTC + ETH 7d'},
-      {n:'MKT BREADTH', s:'on', v:1, d:LIVE_QUOTES.filter(x=>x.c24>0).length+' assets up 24h'},
-      {n:'VOL CONV', s:btc7d>5?'on':'off', v:1, d:'7d>5% + vol conviction'},
-    ];
-    const active = signals.filter(x=>x.s==='on').length;
-    document.getElementById('signalDots').innerHTML = signals.map(x => '<span class="signal-dot '+x.s+'"></span>').join('');
-    document.getElementById('signalCount').textContent = active+'/15';
-    window._signals = signals;
+  if(!b) return;
+  // Signal breakdown from backend strategy engine (matched 1:1)
+  fetch('/api/strategy/scan').then(function(r){return r.json();}).then(function(d){
+    if(d.signal_breakdown && d.signal_breakdown.length===15){
+      window._signals = d.signal_breakdown;
+      var active = d.signal_breakdown.filter(function(x){return x.s==='on';}).length;
+      document.getElementById('signalDots').innerHTML = d.signal_breakdown.map(function(x){return '<span class="signal-dot '+x.s+'"></span>';}).join('');
+      document.getElementById('signalCount').textContent = active+'/15';
+    }
+  }).catch(function(){});
 }
-
-// Station-specific tooltip content — maps station IDs to live data
 function stationTooltip(sid){
   var btc=LIVE_QUOTES.find(function(q){return q.s==='BTC';});
   var tipMap={
@@ -775,7 +757,7 @@ var b=document.createElement("span");b.className="wm-bal";b.textContent=itm.bal.
 var v=document.createElement("span");v.className="wm-usd";v.textContent="$"+itm.usd.toFixed(2);row.appendChild(v);
 if(itm.canSell){var btn=document.createElement("button");btn.className="wm-sell";btn.textContent="SELL";
 (function(s,b){btn.addEventListener("click",function(){var a=s==="BNB"?Math.max(0,b-0.002):b*0.9;
-if(a<=0)return;btn.textContent="...";fetch("/api/manual/swap?from="+s+"&to=BUSD&amount="+a.toFixed(6)).then(function(r){return r.json();}).then(function(d){if(d.executed){btn.textContent="OK "+d.summary.split("->").pop().trim().slice(0,15);fetchWallet();renderTradeLog();setTimeout(function(){var p2=document.getElementById("wm");if(p2)p2.classList.remove("show");},2000);}}).catch(function(e){});});})(itm.sym,itm.bal);
+if(a<=0)return;btn.textContent="...";fetch("/api/manual/swap?from="+s+"&to=USDT&amount="+a.toFixed(6)).then(function(r){return r.json();}).then(function(d){if(d.executed){btn.textContent="OK "+d.summary.split("->").pop().trim().slice(0,15);fetchWallet();renderTradeLog();setTimeout(function(){var p2=document.getElementById("wm");if(p2)p2.classList.remove("show");},2000);}}).catch(function(e){});});})(itm.sym,itm.bal);
 row.appendChild(btn);}
 c.appendChild(row);})(d.items[i]);}}catch(e){}};
 
@@ -802,7 +784,7 @@ function showWithdraw(){
     +'<input id="wdAddr" placeholder="0x..." style="width:100%;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-size:0.5rem;margin-bottom:6px;font-family:var(--mono)">'
     +'<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">'
     +'<input id="wdAmt" placeholder="Amount" style="flex:1;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-size:0.5rem;font-family:var(--mono)">'
-    +'<select id="wdToken" style="padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--gold);font-size:0.5rem;font-family:var(--mono)"><option selected>BUSD</option><option>BNB</option><option>USDT</option></select></div>'
+    +'<select id="wdToken" style="padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--gold);font-size:0.5rem;font-family:var(--mono)"><option>BUSD</option><option>BNB</option><option selected>USDT</option></select></div>'
     +'<button class="wm-btn" style="width:100%;padding:6px" onclick="execWithdraw()">SEND</button>'
     +'<div id="wdResult" style="font-size:0.45rem;color:var(--green);text-align:center;margin-top:4px"></div></div>';
 }
@@ -972,7 +954,7 @@ document.getElementById("swapBtn").addEventListener("click",m);
     for(var i=0;i<keys.length;i++){
       var o=document.createElement('option');
       o.textContent=keys[i];
-      if(keys[i]==='BUSD')o.selected=true;
+      if(keys[i]==='USDT')o.selected=true;
       fromSel.appendChild(o);
     }
     // Populate TO (all tokens except duplicate)
@@ -1035,18 +1017,20 @@ setInterval(loadPositions,15000);
 
 async function closePosition(idx){
   if(!confirm('Close this position?'))return;
+  var btns=document.querySelectorAll('.pos-close');
+  var btn=btns[idx];if(btn){btn.textContent='⟳';btn.disabled=true;btn.style.color='var(--gold)';}
   var b=document.querySelector('.pos-close-all');if(b){b.textContent='CLOSING...';b.disabled=true;}
   try{
     var r=await fetch('/api/position/close?idx='+idx);
     var d=await r.json();
     if(d.executed){loadPositions();fetchWallet();}
-    else{alert('Close failed: '+(d.reason||d.error||'unknown'));}
-  }catch(e){alert('Error closing position');}
+    else{alert('Close failed: '+(d.reason||d.error||'unknown'));if(btn){btn.textContent='✕';btn.disabled=false;btn.style.color='';}}
+  }catch(e){alert('Error closing position');if(btn){btn.textContent='✕';btn.disabled=false;btn.style.color='';}}
   if(b){b.textContent='✕ CLOSE ALL POSITIONS';b.disabled=false;}
 }
 
 async function closeAllPositions(){
-  if(!confirm('Close ALL positions? This will sell everything to BUSD.'))return;
+  if(!confirm('Close ALL positions? This will sell everything to USDT.'))return;
   var b=document.querySelector('.pos-close-all');if(b){b.textContent='CLOSING ALL...';b.disabled=true;}
   try{
     var r=await fetch('/api/position/close-all');

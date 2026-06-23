@@ -118,6 +118,9 @@ CATEGORY_PARAMS = {
     "stable":      {"stop": 0,    "max_busd": 0,    "amt_name": "stable"},
 }
 
+# Symbol list used for CMC info API calls (all 69 tokens minus redundant stables)
+INFO_SYMS = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG,COMP,AXS,FIL,SAND,MANA,ALICE,XCAD,BTCB,WBNB,PEPE,WIF,BABYDOGE,YFI,FTM,CHR,BNX,TLM,RACA,ELON,BAKE,RDNT,BORING,CREAM,BELT,LISTA,ALPACA,BIFI,SUSHI,MBOX,GMT,ZK,C98,SFP,HFT,TWT,XVS"
+
 def get_category(sym):
     return TOKEN_CATEGORY.get(sym, "blue_chip")  # default = blue chip
 
@@ -385,6 +388,67 @@ def refresh_cache():
                             g["data"]["fear_and_greed"] = fg["data"]
                         with cache_lock:
                             cache["global"] = g
+                    # Derivatives (Signal 5) — futures global metrics
+                    der = fetch_cmc("futures/global-metrics/latest", "")
+                    if "error" not in der and isinstance(der.get("data"), dict):
+                        d = der["data"]
+                        with cache_lock:
+                            fr_str = str(d.get("funding_rate_percent", "0.003%")).replace("\"", "")
+                            oi_str = str(d.get("open_interest", "350B")).replace("\"", "")
+                            cache["derivatives"] = {
+                                "funding_rate": {"average": {"current": fr_str}},
+                                "open_interest": {"total": {"current": oi_str}},
+                            }
+                    # Token info (Signal 10) — website/twitter/whitepaper flags
+                    info = fetch_cmc("cryptocurrency/info", "symbol=" + INFO_SYMS)
+                    if "error" not in info and isinstance(info.get("data"), dict):
+                        with cache_lock:
+                            tinfo = {}
+                            for sd in info["data"].values():
+                                if isinstance(sd, dict):
+                                    sym = sd.get("symbol", "").upper()
+                                    urls = sd.get("urls", {})
+                                    tinfo[sym] = {
+                                        "has_website": bool(isinstance(urls.get("website"), list) and len(urls["website"]) > 0),
+                                        "has_twitter": bool(isinstance(urls.get("twitter"), list) and len(urls["twitter"]) > 0),
+                                        "has_whitepaper": bool(isinstance(urls.get("whitepaper"), list) and len(urls["whitepaper"]) > 0),
+                                    }
+                            cache["token_info"] = tinfo
+                    # Macro events (Signal 7) — upcoming economic calendar
+                    mac = fetch_cmc_v3("blockchain-data/macro-events/latest")
+                    if "error" not in mac and isinstance(mac.get("data"), list):
+                        with cache_lock:
+                            cache["macro_events"] = []
+                            for e in mac["data"][:5]:
+                                if isinstance(e, dict):
+                                    cache["macro_events"].append({"date": str(e.get("date","")), "event": str(e.get("event","")), "impact": str(e.get("impact","Medium"))})
+                    # Market cap TA (Signal 6) — derived from BTC price history
+                    btc_hist = cache.get("btc_history", [])
+                    if len(btc_hist) >= 7:
+                        gains = [btc_hist[i] - btc_hist[i-1] for i in range(1, len(btc_hist))]
+                        avg_gain = sum(g for g in gains if g > 0) / len(gains) if any(g > 0 for g in gains) else 0
+                        avg_loss = abs(sum(g for g in gains if g < 0)) / len(gains) if any(g < 0 for g in gains) else 1
+                        rs = avg_gain / avg_loss if avg_loss > 0 else 50
+                        rsi7 = 100 - (100 / (1 + rs))
+                    else:
+                        rsi7 = 50
+                    with cache_lock:
+                        cache["mcap_ta"] = {"rsi": {"rsi7": round(rsi7, 1)}, "macd": {"histogram": 0.01}}
+                    # Narratives (Signal 8) — sector performance from quote data
+                    qc = cache.get("quotes", {}).get("data", {})
+                    if qc:
+                        narr_list = []
+                        cat_perf = {}
+                        for sym, cat in TOKEN_CATEGORY.items():
+                            if cat == "stable": continue
+                            qd_item = qc.get(sym, {}).get("quote", {}).get("USD", {})
+                            if qd_item:
+                                cat_perf.setdefault(cat, []).append(qd_item.get("percent_change_7d", 0))
+                        for cat, perfs in cat_perf.items():
+                            avg7d = sum(perfs) / len(perfs)
+                            narr_list.append({"name": cat.replace("_", " ").title(), "change_7d": round(avg7d, 2), "top_coins": [s for s in VERIFIED_TOKENS if TOKEN_CATEGORY.get(s) == cat][:3]})
+                        with cache_lock:
+                            cache["narratives"] = narr_list
                 qs = "BTC,ETH,BNB,SOL,XRP,ADA,DOGE,AVAX,DOT,LINK,UNI,NEAR,SUI,APT,ARB,OP,INJ,TIA,FET,RNDR,AAVE,ATOM,BCH,CAKE,DAI,ETC,LTC,SHIB,TRX,USDC,BONK,FLOKI,LDO,PENDLE,PENGU,STG,COMP,AXS,FIL,SAND,MANA"
                 q = fetch_cmc("cryptocurrency/quotes/latest", "symbol=" + qs + "&convert=USD")
                 if "error" not in q and "data" in q:
@@ -448,12 +512,13 @@ def update_wallet_cache():
     qc = cache.get("quotes", {}).get("data", {})
     bp = qc.get("BNB", {}).get("quote", {}).get("USD", {}).get("price", 577) if qc else 577
     token_addrs = {
-        "BUSD":"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
-        "USDT":"0x55d398326f99059fF775485246999027B3197955",
-        "USDC":"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-        "DAI":"0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
-        "ETH":"0x2170Ed0880ac9A755fd29B2688956BD959F933F8"
-    }
+            "BUSD":"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+            "USDT":"0x55d398326f99059fF775485246999027B3197955",
+            "USDC":"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+            "DAI":"0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
+            "ETH":"0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
+            "PENGU":"0x6418c0dd099a9FDA397C766304CDd918233E8847",
+        }
     wallet_items = [{"sym":"BNB","bal":round(bnb_w,6),"usd":round(bnb_w*bp,2),"canSell":True}]
     total_usd = round(bnb_w*bp,2)
     for sym, addr in token_addrs.items():
@@ -497,6 +562,149 @@ def refresh_wallet():
     while True:
         update_wallet_cache()
         time.sleep(60)
+
+
+
+def get_signal_breakdown(c, sym, btc_7d, btc_24h, eth_7d, gd, der, mcap_ta, narr, macro, info_data, pos_count, total_count):
+    """Compute all 15 signal states for a coin. Returns (total_score, signals_array)."""
+    sigs = []
+    score = 0
+    # 1: Momentum
+    mom = 0
+    if c["c7"] > 10: mom += 2
+    elif c["c7"] > 5: mom += 1
+    if c["c24"] > 2: mom += 1
+    ms = min(mom, 3)
+    sigs.append({"n":"MOMENTUM", "s":"on" if ms > 0 else "off", "v": ms, "d": str(c["c7"])+"% 7d"})
+    score += ms
+    # 2: Volume conviction
+    vol = 0
+    if c["v"] > 50e6: vol += 2
+    elif c["v"] > 10e6: vol += 1
+    if c["mc"] > 0 and c["v"]/c["mc"] > 0.05: vol += 1
+    vs = min(vol, 2)
+    sigs.append({"n":"VOLUME", "s":"on" if vs > 0 else "off", "v": vs, "d": "$"+str(round(c["v"]/1e6,1))+"M vol"})
+    score += vs
+    # 3: Relative strength vs BTC
+    rs = 0
+    rel_7d = c["c7"] - btc_7d
+    rel_24h = c["c24"] - btc_24h
+    if rel_7d > 5: rs += 2
+    elif rel_7d > 2: rs += 1
+    if rel_24h > 2: rs += 1
+    rss = min(rs, 2)
+    sigs.append({"n":"REL STR", "s":"on" if rss > 0 else "off", "v": rss, "d": "RS "+str(round(rel_7d,1))+"% vs BTC"})
+    score += rss
+    # 4: Market regime
+    reg = 0
+    fg = 50
+    if isinstance(gd, dict):
+        fg = gd.get("fear_and_greed", {}).get("value", 50) if isinstance(gd.get("fear_and_greed"), dict) else 50
+        alt = gd.get("altcoin_season_index", 50) if isinstance(gd.get("altcoin_season_index"), (int, float)) else 50
+        if fg < 30: reg += 1
+        if alt > 40: reg += 1
+    regs = min(reg, 1)
+    sigs.append({"n":"REGIME", "s":"on" if regs > 0 else "off", "v": regs, "d":"F&G "+str(fg)})
+    score += regs
+    # 5: Derivatives
+    ds = 0
+    fr = "0%"
+    oi = "0"
+    if isinstance(der, dict):
+        fr = der.get("funding_rate", {}).get("average", {}).get("current", "0%")
+        frv = float(str(fr).replace("%","")) if isinstance(fr, str) else 0
+        if frv > 0: ds += 1
+        oi = der.get("open_interest", {}).get("total", {}).get("current", "0")
+        oiv = float(str(oi).replace("B","").replace("M","")) if isinstance(oi, str) else 0
+        if oiv > 350: ds += 1
+    dss = min(ds, 2)
+    sigs.append({"n":"DERIVATIVES", "s":"on" if dss > 0 else "off", "v": dss, "d":"OI "+str(oi)+" · FR "+str(fr)})
+    score += dss
+    # 6: Market cap TA
+    msig = 0
+    rv = 50
+    if isinstance(mcap_ta, dict):
+        mrsi = mcap_ta.get("rsi", {})
+        if isinstance(mrsi, dict):
+            rv = mrsi.get("rsi7", 50)
+            if 40 < rv < 70: msig += 1
+    mss = min(msig, 1)
+    sigs.append({"n":"MKT CAP TA", "s":"on" if mss > 0 else "off", "v": mss, "d":"RSI "+str(round(rv,0))})
+    score += mss
+    # 7: Macro events
+    mac = 0
+    if isinstance(macro, list) and len(macro) > 0: mac += 1
+    macs = min(mac, 1)
+    sigs.append({"n":"MACRO", "s":"on" if macs > 0 else "off", "v": macs, "d":str(len(macro))+" events"})
+    score += macs
+    # 8: Narrative fit
+    ns = 0
+    cat = get_category(sym) if 'get_category' in dir() else 'blue_chip'
+    if cat == "meme" and isinstance(narr, list) and any("meme" in str(n).lower() for n in narr): ns += 2
+    elif cat == "defi" and isinstance(narr, list) and any("defi" in str(n).lower() for n in narr): ns += 2
+    elif cat == "blue_chip" and isinstance(narr, list): ns += 1
+    nss = min(ns, 2)
+    sigs.append({"n":"NARRATIVE", "s":"on" if nss > 0 else "off", "v": nss, "d":cat+" sector"})
+    score += nss
+    # 9: Technical strength
+    ts = 0
+    if c["c7"] > c["c24"]: ts += 1
+    if c["c24"] > 0: ts += 1
+    if c["c7"] > 3 and c["c24"] > -1: ts += 1
+    tss = min(ts, 2)
+    sigs.append({"n":"TECHNICAL", "s":"on" if tss > 0 else "off", "v": tss, "d":str(round(c["c7"],1))+"% 7d"})
+    score += tss
+    # 10: Fundamentals
+    fs = 0
+    if sym in info_data:
+        inf = info_data[sym]
+        if inf.get("has_website"): fs += 0.5
+        if inf.get("has_twitter"): fs += 0.3
+        if inf.get("has_whitepaper"): fs += 0.2
+    fss = min(int(fs), 1)
+    sigs.append({"n":"FUNDAMENTAL", "s":"on" if fss > 0 else "off", "v": fss, "d":"Metadata score"})
+    score += fss
+    # 11: Trend acceleration
+    acc = 0
+    if c["c7"] > c["c24"] and c["c24"] > 0: acc += 1
+    acs = min(acc, 1)
+    sigs.append({"n":"ACCELERATION", "s":"on" if acs > 0 else "off", "v": acs, "d":"7d > 24h trend"})
+    score += acs
+    # 12: Volume surge
+    vsu = 0
+    v24, vch = c.get("volume_24h",0), c.get("vchg",0)
+    mc = c.get("mc",0)
+    vr = 0
+    if v24 > 0:
+        vr = (v24/mc) if mc > 0 else 0
+        if vr > 0.1: vsu += 1
+        if vch > 0: vsu += 1
+    vsus = min(vsu, 2)
+    sigs.append({"n":"VOL SURGE", "s":"on" if vsus > 0 else "off", "v": vsus, "d":"Vol ratio "+str(round(vr,3))})
+    score += vsus
+    # 13: Cross-asset RS vs BTC + ETH
+    xrs = 0
+    rel_btc = c["c7"] - btc_7d
+    rel_eth = c["c7"] - eth_7d
+    if rel_btc > 3 and rel_eth > 3: xrs += 2
+    elif rel_btc > 2 or rel_eth > 2: xrs += 1
+    xrss = min(xrs, 2)
+    sigs.append({"n":"CROSS RS", "s":"on" if xrss > 0 else "off", "v": xrss, "d":"vs BTC "+str(round(rel_btc,1))+"% · ETH "+str(round(rel_eth,1))+"%"})
+    score += xrss
+    # 14: Market breadth
+    mb = 0
+    if total_count > 0 and (pos_count/total_count) > 0.55: mb += 1
+    mbs = min(mb, 1)
+    sigs.append({"n":"MKT BREADTH", "s":"on" if mbs > 0 else "off", "v": mbs, "d":str(pos_count)+"/"+str(total_count)+" up"})
+    score += mbs
+    # 15: Volatility conviction
+    vc = 0
+    if abs(c["c7"]) > 5: vc += 0.5
+    if mc > 0 and (c["v"]/mc) > 0.05: vc += 0.5
+    vcs = min(int(vc), 1)
+    sigs.append({"n":"VOL CONV", "s":"on" if vcs > 0 else "off", "v": vcs, "d":"7d "+str(round(c["c7"],1))+"%"})
+    score += vcs
+    return round(score, 1), sigs
 
 def scan_strategy():
     """11-signal weighted strategy. Returns best candidate with scores."""
@@ -691,15 +899,23 @@ def scan_strategy():
     
     scored.sort(key=lambda x: x["score"], reverse=True)
     best = scored[0] if scored else None
-    
+
+    # Build signal breakdown for best candidate
+    sig_breakdown = []
+    if best:
+        best_coin = next((c for c in coins if c["s"] == best["s"]), None)
+        if best_coin:
+            _, sig_breakdown = get_signal_breakdown(best_coin, best["s"], btc_7d, btc_24h, eth_7d, gd, der, mcap_ta, narr, macro, info_data, pos_count, total_count)
+
     return {
-        "candidate": best,
-        "signals": best["score"] if best else 0,
-        "max_score": max_score,
-        "total": len(coins),
-        "scored": len(scored),
-        "entry_threshold": get_entry_threshold(),
-    }
+            "candidate": best,
+            "signals": best["score"] if best else 0,
+            "max_score": max_score,
+            "total": len(coins),
+            "scored": len(scored),
+            "entry_threshold": get_entry_threshold(),
+            "signal_breakdown": sig_breakdown,
+        }
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -815,7 +1031,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self.send_json({"executed":False,"reason":f"{sym} not in verified list","candidate":sym,"signals":score})
                         return
                     # Execute swap: BUSD → token
-                    result = twak_jsonrpc("swap",{"fromToken":"BUSD","toToken":addr,"amount":str(busd_amt),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                    result = twak_jsonrpc("swap",{"fromToken":"USDT","toToken":addr,"amount":str(busd_amt),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                     text = twak_swap_text(result)
                     sd = json.loads(text) if isinstance(text, str) else text
                     tx_hash = sd.get("hash","")
@@ -849,7 +1065,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 qs = urllib.parse.urlparse(self.path).query
                 qp = urllib.parse.parse_qs(qs)
-                from_t = qp.get("from",["BUSD"])[0].upper()
+                from_t = qp.get("from",["USDT"])[0].upper()
                 to_t = qp.get("to",["CAKE"])[0].upper()
                 amt = qp.get("amount",["1"])[0]
                 if from_t == to_t:
@@ -900,7 +1116,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 qp = urllib.parse.parse_qs(qs)
                 to_addr = qp.get("to",[""])[0]
                 amount = qp.get("amount",["0"])[0]
-                token = qp.get("token",["BUSD"])[0].upper()
+                token = qp.get("token",["USDT"])[0].upper()
                 if not to_addr or not amount:
                     self.send_json({"executed":False,"reason":"Missing to address or amount"}); return
                 if token == "BNB":
@@ -929,7 +1145,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p == "/api/derivatives":
             self.send_json({"openInterest": "399.84B", "fundingRate": "+0.003%"})
         elif p == "/api/wallet":
-            closed_count = sum(1 for e in PROGRESS if e.get("action") == "CLOSE")
+            closed_count = sum(1 for t in TRADE_HISTORY if t.get("dir") not in ("BUY", "SWAP"))
             w = cache.get("wallet", {"bnb": 0, "usd": 0, "bnb_price": 577, "closedTrades": 0, "initUsd": 49.00})
             w["closedTrades"] = closed_count
             self.send_json(w)
@@ -995,7 +1211,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     to_use = sym
                 else:
                     to_use = addr
-                result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
+                result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t * 0.95), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
                 text = twak_swap_text(result)
                 sd = json.loads(text) if isinstance(text, str) else text
                 tx_hash = sd.get("hash", "")
@@ -1004,7 +1220,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     close_position(idx, "manual close")
                     TRADE_COUNT += 1
                     ts = dt.utcnow().strftime("%d %b %H:%M")
-                    TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→BUSD", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
+                    TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→USDT", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
                     update_wallet_cache()
                     self.send_json({"executed": True, "tx": tx_hash, "explorer": sd.get("explorer", ""), "summary": sd.get("summary", ""), "token": sym})
                 else:
@@ -1032,7 +1248,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         results.append({"token": sym, "status": "empty"})
                         continue
                     to_use = sym if (sym in TWAK_NATIVE or sym == "BNB") else addr
-                    result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
+                    result = twak_jsonrpc("swap", {"fromToken": to_use, "toToken": "BUSD", "amount": str(amt_t * 0.95), "fromChain": "bsc", "toChain": "bsc", "slippage": "10"})
                     text = twak_swap_text(result)
                     sd = json.loads(text) if isinstance(text, str) else text
                     tx_hash = sd.get("hash", "")
@@ -1040,7 +1256,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         close_position(0, "close-all")
                         TRADE_COUNT += 1
                         ts = dt.utcnow().strftime("%d %b %H:%M")
-                        TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→BUSD", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
+                        TRADE_HISTORY.append({"time": ts, "pair": f"{sym}→USDT", "dir": "CLOSE", "amt": sd.get("summary", ""), "tx": tx_hash})
                         results.append({"token": sym, "status": "sold", "tx": tx_hash})
                     else:
                         results.append({"token": sym, "status": "failed", "error": sd.get("message", "Swap failed")})
@@ -1113,17 +1329,30 @@ def refresh_positions():
                         p["highest"] = cur_price
                         cp = CATEGORY_PARAMS.get(p["cat"], CATEGORY_PARAMS["blue_chip"])
                         p["trailing_stop"] = cur_price * (1 - cp["stop"])
-                    # Stop-loss
+                    # Stop-loss — sell to BUSD on-chain, then remove
                     if cur_price <= p["trailing_stop"] and cur_price < entry:
+                        try:
+                            sell_amt = p["amt_tokens"] * 0.95  # 95% to handle token fees
+                            if sell_amt > 0:
+                                r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"USDT","amount":str(sell_amt),"fromChain":"bsc","toChain":"bsc","slippage":"10"})
+                                t = twak_swap_text(r)
+                                d = json.loads(t) if isinstance(t,str) else t
+                                if d.get("success") or d.get("hash"):
+                                    TRADE_COUNT += 1
+                                    ts = dt.utcnow().strftime("%d %b %H:%M")
+                                    TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→USDT","dir":"STOP","amt":d.get("summary","sold"),"tx":d.get("hash","")})
+                                    save_positions()
+                                    print(f"  🛑 REAL STOP SELL: {p['token']} → USDT ({pnl*100:.1f}%)")
+                        except:
+                            pass
                         close_position(i, f"stop {pnl*100:.1f}%")
-                        print(f"  🛑 STOP {p['token']} {pnl*100:.1f}%")
                         continue
                     # +3% early-exit tier (only for first trade of the day, competition mode only)
                     if COMPETITION_MODE and p.get("is_early_exit") and pnl >= 0.03 and not p.get("early_sold"):
-                        sell_early = p["amt_tokens"] * 0.50
+                        sell_early = p["amt_tokens"] * 0.50 * 0.95
                         if sell_early > 0:
                             try:
-                                r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"BUSD","amount":str(sell_early),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                                r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"USDT","amount":str(sell_early),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                                 t = twak_swap_text(r)
                                 d = json.loads(t) if isinstance(t,str) else t
                                 if d.get("success") or d.get("hash"):
@@ -1131,17 +1360,17 @@ def refresh_positions():
                                     p["amt_tokens"] -= sell_early
                                     TRADE_COUNT += 1
                                     ts = dt.utcnow().strftime("%d %b %H:%M")
-                                    TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→BUSD","dir":"+3%","amt":d.get("summary","sold"),"tx":d.get("hash","")})
+                                    TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→USDT","dir":"+3%","amt":d.get("summary","sold"),"tx":d.get("hash","")})
                                     save_positions()
-                                    print(f"  💰 +3% early exit: {p['token']} → BUSD (+3%)")
+                                    print(f"  💰 +3% early exit: {p['token']} → USDT (+3%)")
                             except: pass
                     # Profit tiers
                     for pct, key, frac, label in [(0.08,"tier1_sold",0.25,"+8%"),(0.15,"tier2_sold",0.25,"+15%"),(0.25,"tier3_sold",0.25,"+25%")]:
                         if pnl >= pct and not p[key]:
-                            sell = p["amt_tokens"] * frac
+                            sell = p["amt_tokens"] * frac * 0.95
                             if sell > 0:
                                 try:
-                                    r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"BUSD","amount":str(sell),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
+                                    r = twak_jsonrpc("swap",{"fromToken":p["address"],"toToken":"USDT","amount":str(sell),"fromChain":"bsc","toChain":"bsc","slippage":"5"})
                                     t = twak_swap_text(r)
                                     d = json.loads(t) if isinstance(t,str) else t
                                     if d.get("success") or d.get("hash"):
@@ -1149,9 +1378,9 @@ def refresh_positions():
                                         p["amt_tokens"] -= sell
                                         TRADE_COUNT += 1
                                         ts = dt.utcnow().strftime("%d %b %H:%M")
-                                        TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→BUSD","dir":label,"amt":d.get("summary",f"sold"),"tx":d.get("hash","")})
+                                        TRADE_HISTORY.append({"time":ts,"pair":f"{p['token']}→USDT","dir":label,"amt":d.get("summary",f"sold"),"tx":d.get("hash","")})
                                         save_positions()
-                                        print(f"  💰 {label}: {p['token']} → BUSD")
+                                        print(f"  💰 {label}: {p['token']} → USDT")
                                 except: pass
                     if p["amt_tokens"] < 0.0001:
                         close_position(i, "sold out")
@@ -1198,9 +1427,30 @@ def refresh_positions():
                                     best_pnl = pp
                                     best_idx = s["idx"]
                         if best_idx >= 0:
-                            sym_t = POSITIONS[best_idx]["token"] if best_idx < len(POSITIONS) else "?"
+                            with POSITIONS_LOCK:
+                                if best_idx < len(POSITIONS):
+                                    g_pos = POSITIONS[best_idx]
+                                    g_sym = g_pos["token"]
+                                    g_addr = g_pos["address"]
+                                    g_amt = g_pos["amt_tokens"]
+                                else:
+                                    g_sym, g_addr, g_amt = "?", None, 0
+                            if g_amt > 0 and g_addr:
+                                try:
+                                    g_sell = g_amt * 0.95
+                                    gr = twak_jsonrpc("swap",{"fromToken":g_addr,"toToken":"USDT","amount":str(g_sell),"fromChain":"bsc","toChain":"bsc","slippage":"10"})
+                                    gt = twak_swap_text(gr)
+                                    gd = json.loads(gt) if isinstance(gt,str) else gt
+                                    if gd.get("success") or gd.get("hash"):
+                                        TRADE_COUNT += 1
+                                        ts = dt.utcnow().strftime("%d %b %H:%M")
+                                        TRADE_HISTORY.append({"time":ts,"pair":f"{g_sym}→USDT","dir":"GUARANTEE","amt":gd.get("summary","sold"),"tx":gd.get("hash","")})
+                                        save_positions()
+                                        print(f"  ⏰ GUARANTEE SELL: {g_sym} → USDT ({best_pnl*100:.1f}%)")
+                                except:
+                                    pass
                             close_position(best_idx, "guarantee close")
-                            print(f"  ⏰ Guarantee close: {sym_t} (P&L {best_pnl*100:.1f}%)")
+                            print(f"  ⏰ Guarantee close: {g_sym} (P&L {best_pnl*100:.1f}%)")
                             GUARANTEE_CLOSE_TIME = now
         except: pass
         time.sleep(60)
@@ -1209,10 +1459,10 @@ if __name__ == "__main__":
     # Restore positions from disk (survives restarts)
     load_positions()
     load_custom_config()
-    # Competition starts 18 hours from now
-    COMPETITION_START = time.time() + 18 * 3600
+    # Competition start — hardcoded to real event time
+    COMPETITION_START = 1782115086  # June 22, 2026 07:58 UTC
     cs = time.strftime("%b %d %H:%M UTC", time.gmtime(COMPETITION_START))
-    print(f"🏁 Competition starts in 18h ({cs}) — first guarantee check at +22h")
+    print(f"🏁 Competition started {cs} (hardcoded) — guarantee checks active now")
     print("📊 Server on port {}".format(PORT))
     print("  📊 Market data refreshing every {}s...".format(CACHE_TTL))
     t = threading.Thread(target=refresh_cache, daemon=True)
